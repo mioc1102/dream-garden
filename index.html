@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#d9e6ff">
+<title>꿈속 정원 ✧ dream garden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<div id="sparkles" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="hud">
+  <div class="hud-lv">
+    <div class="lv-orb"><span>Lv</span><b id="lvNumHud">1</b></div>
+    <div class="lv-info">
+      <div class="lv-title"><span id="lvTitle">씨앗</span> <em class="whisper">you are safe here</em></div>
+      <div class="xpbar"><i id="xpFill"></i></div>
+      <div class="xp-txt" id="xpTxt">0 / 100 XP</div>
+    </div>
+  </div>
+  <div class="hud-right">
+    <span class="pill" title="연속 기록"><i data-ic="flame"></i><b id="hudStreak">0</b>일</span>
+    <span class="pill date" id="hudDate"></span>
+  </div>
+</header>
+
+<main>
+  <!-- 홈 -->
+  <section id="view-home" class="view active">
+    <div class="scene" id="scene">
+      <div id="garden"></div>
+      <div class="bubble" id="bubble">…</div>
+      <div class="scene-tag" id="sceneTag"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2><i data-ic="sparkle"></i>오늘의 퀘스트</h2><span class="chip-sm" id="questCount"></span></div>
+      <ul id="quests" class="quests"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2><i data-ic="hourglass"></i>오늘의 루틴 <span class="chip-sm" id="routineCount"></span></h2><button class="btn tiny glass" id="routineManage"><i data-ic="sliders"></i>루틴 관리</button></div>
+      <ul id="routineToday" class="routines"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2><i data-ic="pen"></i>기록 남기기</h2><input type="date" id="addDate" class="date-mini"></div>
+      <form id="addForm">
+        <div class="cat-chips" id="catChips"></div>
+        <div id="partBox" class="part-box" hidden>
+          <div class="part-chips" id="partChips"></div>
+          <div class="preset-chips" id="presetChips"></div>
+          <p class="muted small part-hint" id="partHint"></p>
+        </div>
+        <div class="min-row">
+          <div class="min-input"><input type="number" id="addMin" min="1" max="1440" placeholder="0" required><span>분</span></div>
+          <div class="quick">
+            <button type="button" class="btn tiny glass" data-q="10">+10</button>
+            <button type="button" class="btn tiny glass" data-q="30">+30</button>
+            <button type="button" class="btn tiny glass" data-q="60">+60</button>
+          </div>
+        </div>
+        <input type="text" id="addNote" class="field" maxlength="200" placeholder="무엇을 했나요? (예: 스쿼트 5x5, 수학 문제집 3장)">
+        <div class="timer" id="timerBox">
+          <div class="timer-face"><i data-ic="hourglass" class="timer-ic"></i><span id="timerDisplay">00:00:00</span></div>
+          <button type="button" id="timerBtn" class="btn small sky">시작</button>
+          <button type="button" id="timerReset" class="btn small glass">초기화</button>
+        </div>
+        <button type="submit" class="btn primary block"><i data-ic="sparkle"></i>꿈에 기록하기</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2><i data-ic="moon"></i>오늘 한 일</h2><span class="chip-sm" id="todayTotal"></span></div>
+      <ul id="todayList" class="entries"></ul>
+    </div>
+  </section>
+
+  <!-- 영어 -->
+  <section id="view-english" class="view"><div id="engRoot"></div></section>
+
+  <!-- 기록 -->
+  <section id="view-log" class="view">
+    <div class="card">
+      <h2><i data-ic="notebook"></i>기록 모아보기</h2>
+      <div class="filters">
+        <select id="logCat" class="field"></select>
+        <select id="logPart" class="field"></select>
+        <input type="month" id="logMonth" class="field">
+        <input type="search" id="logSearch" class="field" placeholder="메모 검색">
+      </div>
+      <p id="logSummary" class="muted small"></p>
+      <ul id="logList" class="entries"></ul>
+    </div>
+  </section>
+
+  <!-- 달력 -->
+  <section id="view-calendar" class="view">
+    <div class="card">
+      <div class="cal-head">
+        <button id="calPrev" class="btn tiny glass icon-only"><i data-ic="left"></i></button>
+        <strong id="calTitle"></strong>
+        <button id="calNext" class="btn tiny glass icon-only"><i data-ic="right"></i></button>
+      </div>
+      <select id="calCat" class="field" style="margin-bottom:10px"></select>
+      <div class="cal-grid cal-week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div id="calGrid" class="cal-grid"></div>
+      <p class="muted small center">색이 짙을수록 오래 머문 날 · ✦ 목표를 이룬 날</p>
+      <div id="calDay"></div>
+    </div>
+  </section>
+
+  <!-- 통계 -->
+  <section id="view-stats" class="view">
+    <div class="card">
+      <div class="card-h"><h2><i data-ic="chart"></i>성장 리포트</h2>
+        <select id="statRange" class="field" style="width:auto">
+          <option value="7">최근 7일</option>
+          <option value="30">최근 30일</option>
+          <option value="90">최근 90일</option>
+        </select>
+      </div>
+      <div id="statSummary" class="grid"></div>
+    </div>
+    <div class="card">
+      <h2><i data-ic="cloud"></i>일별 시간</h2>
+      <div id="statChart" class="chart"></div>
+      <div id="statX" class="chart-x"></div>
+      <div id="statLegend" class="legend"></div>
+    </div>
+    <div class="card" id="partCard">
+      <h2><i data-ic="dumbbell"></i>운동 부위</h2>
+      <div id="statParts" class="part-stats"></div>
+    </div>
+    <div class="card">
+      <h2><i data-ic="letters"></i>토익 단어</h2>
+      <div id="statEng" class="grid"></div>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="view-settings" class="view">
+    <div class="card">
+      <h2><i data-ic="flower"></i>분야 관리</h2>
+      <ul id="catList" class="cat-list"></ul>
+      <form id="catForm" class="cat-add">
+        <span class="ic-prev" id="catIconPrev"></span>
+        <select id="catIcon" class="field icon-sel"></select>
+        <input type="text" id="catName" class="field" maxlength="20" placeholder="새 분야 (예: 독서)" required>
+        <label class="small muted goal-l">목표 <input type="number" id="catGoal" class="field" min="0" max="1440" value="30">분</label>
+        <input type="color" id="catColor" value="#c7a8ff">
+        <button type="submit" class="btn small primary">추가</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2><i data-ic="letters"></i>영어 루틴</h2>
+      <div class="set-row"><span>하루에 외울 새 단어</span>
+        <select id="setDaily" class="field" style="width:auto">
+          <option value="10">10개</option><option value="15">15개</option><option value="20">20개</option><option value="30">30개</option><option value="50">50개</option>
+        </select></div>
+      <div class="set-row"><span>공부·시험 시간을 '영어' 기록에 자동 저장</span><label class="switch"><input type="checkbox" id="setAutoLog"><i></i></label></div>
+      <div class="set-row"><span>단어 카드 넘길 때 발음 자동 재생</span><label class="switch"><input type="checkbox" id="setAutoSpeak"><i></i></label></div>
+      <p class="muted small">새 단어 수 변경은 내일 단어부터 적용돼요. 오늘 더 하고 싶으면 영어 탭의 "새 단어 +10개"를 눌러요.</p>
+    </div>
+    <div class="card">
+      <h2><i data-ic="moon"></i>알림 · 휴대폰</h2>
+      <div class="set-row"><span>앱 알림 (루틴 시간 · 단어 리마인더)<br><small class="muted" id="notiState"></small></span><button class="btn small primary" id="notiBtn">알림 허용</button></div>
+      <div class="set-row"><span>매일 단어 공부 리마인더 시간</span><input type="time" class="field" id="setWordTime" style="width:auto"></div>
+      <div class="set-row"><span>휴대폰 캘린더에 루틴 알림 넣기<br><small class="muted">.ics 파일을 휴대폰에서 열면 캘린더가 정해진 시간마다 알려줘요 (앱을 꺼도 울려요)</small></span><button class="btn small sky" id="icsBtn"><i data-ic="calendar"></i>캘린더 파일</button></div>
+      <div class="set-row"><span>Google 캘린더 연결<br><small class="muted">루틴 관리에서 루틴 옆 캘린더 아이콘을 누르면 매주 반복 일정으로 들어가요</small></span><span class="row"><button class="btn small glass" id="gcalAllBtn"><i data-ic="calendar"></i>루틴 보내기</button><button class="btn small glass" id="gcalWordBtn"><i data-ic="letters"></i>단어 알림</button></span></div>
+      <p class="muted small" id="pwaInfo"></p>
+      <button class="btn small glass" id="notiTest"><i data-ic="sparkle"></i>알림 테스트</button>
+    </div>
+    <div class="card">
+      <h2><i data-ic="sparkle"></i>Claude로 일정 넣기</h2>
+      <p class="muted small">① 아래 버튼으로 안내문을 복사해 Claude 대화창에 붙여넣고 "월수금 아침 7시에 가슴·어깨 운동 45분 루틴 넣어줘"처럼 말해요.<br>② Claude가 준 <b>링크를 누르거나</b>, 코드를 아래 칸에 붙여넣고 가져오기를 누르면 확인 후 바로 들어가요.</p>
+      <div class="row" style="margin-bottom:8px"><button class="btn small pink" id="impPromptBtn"><i data-ic="cards"></i>Claude용 안내문 복사</button></div>
+      <textarea id="impText" class="field" rows="4" placeholder="Claude가 준 JSON 코드나 #import= 링크를 붙여넣기"></textarea>
+      <button class="btn small primary" id="impBtn" style="margin-top:8px"><i data-ic="download"></i>가져오기</button>
+    </div>
+    <div class="card">
+      <h2><i data-ic="speaker"></i>기타</h2>
+      <div class="set-row"><span>효과음</span><label class="switch"><input type="checkbox" id="setSound"><i></i></label></div>
+      <div class="set-row"><span>떠다니는 반짝이</span><label class="switch"><input type="checkbox" id="setSparkle"><i></i></label></div>
+    </div>
+    <div class="card">
+      <h2><i data-ic="download"></i>백업</h2>
+      <p class="muted small">데이터는 이 브라우저에만 저장돼요. 브라우저 데이터를 지우면 사라지니 가끔 백업해 두세요.</p>
+      <div class="row">
+        <button id="exportBtn" class="btn small primary"><i data-ic="download"></i>백업 파일 내보내기</button>
+        <label class="btn small glass"><i data-ic="upload"></i>백업 불러오기<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+      </div>
+      <p id="backupInfo" class="muted small"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="dock" id="tabs">
+  <button data-view="home" class="active"><i data-ic="door"></i><span>정원</span></button>
+  <button data-view="english"><i data-ic="letters"></i><span>영어</span></button>
+  <button data-view="log"><i data-ic="notebook"></i><span>기록</span></button>
+  <button data-view="calendar"><i data-ic="calendar"></i><span>달력</span></button>
+  <button data-view="stats"><i data-ic="chart"></i><span>통계</span></button>
+  <button data-view="settings"><i data-ic="sliders"></i><span>설정</span></button>
+</nav>
+
+<dialog id="editDlg">
+  <form method="dialog" class="dlg-form">
+    <h2><i data-ic="pen"></i>기록 수정</h2>
+    <label>분야 <select id="editCat" class="field"></select></label>
+    <label>날짜 <input type="date" id="editDate" class="field" required></label>
+    <div id="editPartsWrap" hidden><span class="small muted">운동 부위</span><div id="editParts" class="part-chips"></div></div>
+    <label>시간(분) <input type="number" id="editMin" class="field" min="1" max="1440" required></label>
+    <label>메모 <input type="text" id="editNote" class="field" maxlength="200"></label>
+    <div class="row end">
+      <button value="cancel" class="btn small glass" formnovalidate>취소</button>
+      <button value="save" class="btn small primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="routineDlg" class="wide-dlg">
+  <div class="dlg-form">
+    <div class="card-h"><h2><i data-ic="hourglass"></i>루틴 관리</h2><button class="btn tiny glass icon-only" id="rtClose"><i data-ic="x"></i></button></div>
+    <ul id="rtList" class="entries rt-list"></ul>
+    <form id="rtForm" class="rt-form">
+      <h3 id="rtFormTitle">새 루틴 만들기</h3>
+      <input class="field" id="rtName" placeholder="루틴 이름 (예: 아침 가슴 운동, 저녁 토익 단어)" maxlength="30" required>
+      <select class="field" id="rtCat"></select>
+      <div id="rtParts" class="part-chips" hidden></div>
+      <div class="day-chips" id="rtDays"></div>
+      <div class="row"><label class="small muted lbl">시간 <input type="time" class="field" id="rtTime" value="07:00"></label><label class="small muted lbl">분량(분) <input type="number" class="field" id="rtMin" value="30" min="1" max="600"></label></div>
+      <input class="field" id="rtNote" placeholder="메모 (예: 벤치프레스 5x5, 단어 20개)">
+      <label class="small chk"><input type="checkbox" id="rtRemind" checked> 이 시간에 알림 받기</label>
+      <div class="row end"><button type="button" class="btn small glass" id="rtCancel" hidden>새로 만들기</button><button class="btn small primary" type="submit"><i data-ic="check"></i>저장</button></div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="impDlg">
+  <form method="dialog" class="dlg-form">
+    <h2><i data-ic="sparkle"></i>Claude가 보낸 일정</h2>
+    <p class="muted small">아래 내용을 앱에 추가할까요?</p>
+    <ul id="impList" class="entries imp-list"></ul>
+    <div class="row end"><button value="cancel" class="btn small glass">취소</button><button value="ok" class="btn small primary">추가하기</button></div>
+  </form>
+</dialog>
+
+<dialog id="lvDlg">
+  <form method="dialog" class="lv-pop">
+    <div class="lv-halo"><i data-ic="sparkle"></i></div>
+    <p class="whisper">you've grown a little</p>
+    <h2>레벨 업</h2>
+    <div class="lv-big">Lv. <b id="lvDlgNum">2</b></div>
+    <p id="lvDlgMsg"></p>
+    <button class="btn primary block">계속 꿈꾸기 ✧</button>
+  </form>
+</dialog>
+
+<div id="toast" class="toast"></div>
+<div id="fx"></div>
+
+<script src="words/_init.js"></script>
+<script src="words/office.js"></script>
+<script src="words/hr.js"></script>
+<script src="words/marketing.js"></script>
+<script src="words/finance.js"></script>
+<script src="words/production.js"></script>
+<script src="words/shopping.js"></script>
+<script src="words/travel.js"></script>
+<script src="words/dining.js"></script>
+<script src="words/legal.js"></script>
+<script src="words/property.js"></script>
+<script src="words/tech.js"></script>
+<script src="words/general.js"></script>
+<script src="words/extra_a.js"></script>
+<script src="words/extra_b.js"></script>
+<script src="words.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

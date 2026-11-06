@@ -1,0 +1,16 @@
+{
+  "name": "꿈속 정원 · 성장 기록",
+  "short_name": "꿈속 정원",
+  "description": "운동·공부·토익 단어를 기록하고 루틴을 지키는 드림코어 성장 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e9dcff",
+  "theme_color": "#d9e6ff",
+  "lang": "ko",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
