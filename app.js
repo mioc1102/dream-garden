@@ -290,6 +290,15 @@
 
   // ================= 꿈속 정원 장면 (SVG) =================
   var hasFieldImg = false;
+  function theme() { return data.settings.theme === 'plain' ? 'plain' : 'dream'; }
+  function useImg() { return hasFieldImg && theme() === 'dream'; }
+  function applyTheme() {
+    var plain = theme() === 'plain';
+    document.documentElement.classList.toggle('theme-plain', plain);
+    $('scene').classList.toggle('has-img', useImg());
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = plain ? '#f3f4f8' : '#d9e6ff';
+    document.title = plain ? '성장 기록 · 꿈속 정원' : '꿈속 정원 ✧ dream garden';
+  }
   function skyFor(h) {
     if (h < 5 || h >= 20) return { t: '#4b4a8c', b: '#b49ad8', night: true, name: 'night' };
     if (h < 8) return { t: '#ffd0e6', b: '#fff1dc', name: 'dawn' };
@@ -400,7 +409,7 @@
       '<filter id="soft"><feGaussianBlur stdDeviation="4"/></filter><filter id="soft2"><feGaussianBlur stdDeviation="1.2"/></filter>' +
       '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
     var bg = '';
-    if (!hasFieldImg) {
+    if (!useImg()) {
       bg = '<rect width="360" height="212" fill="url(#skyG)"/>' + stars +
         (sky.night ? '<circle cx="300" cy="42" r="16" fill="#fff8e0" filter="url(#glow)"/><circle cx="307" cy="37" r="14" fill="' + sky.t + '"/>'
           : '<circle cx="300" cy="42" r="40" fill="url(#sunG)"/>') +
@@ -417,7 +426,7 @@
     }
     var svg = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' + defs + bg +
       treeSVG(stage) + flowers + momoSVG(mood) +
-      (sky.night && !hasFieldImg ? '<rect width="360" height="212" fill="#3a3270" opacity=".12"/>' : '') +
+      (sky.night && !useImg() ? '<rect width="360" height="212" fill="#3a3270" opacity=".12"/>' : '') +
       '</svg>';
     $('garden').innerHTML = svg;
     $('sceneTag').textContent = '✧ ' + titleOf(L) + ' · 꽃 ' + fl.length + '송이';
@@ -1768,6 +1777,7 @@
     $('setAutoSpeak').checked = !!data.settings.autoSpeak;
     $('setSound').checked = !!data.settings.sound;
     $('setSparkle').checked = !!data.settings.sparkle;
+    document.querySelectorAll('.theme-opt').forEach(function (b) { b.classList.toggle('on', b.dataset.theme === theme()); });
     renderNotiSettings();
     $('backupInfo').textContent = '분야 ' + data.categories.length + '개 · 기록 ' + data.entries.length + '개 · 학습 단어 ' + Object.keys(data.english.words).filter(function (w) { return data.english.words[w].intro; }).length + '개';
   }
@@ -1805,6 +1815,11 @@
   $('setAutoLog').addEventListener('change', function () { data.settings.autoLog = this.checked; save(); });
   $('setAutoSpeak').addEventListener('change', function () { data.settings.autoSpeak = this.checked; save(); });
   $('setSound').addEventListener('change', function () { data.settings.sound = this.checked; save(); sfx('pop'); });
+  $('themeGrid').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-theme]'); if (!b) return;
+    data.settings.theme = b.dataset.theme; save(); applyTheme(); sfx('pop');
+    toast(theme() === 'plain' ? '일반 테마로 바꿨어요' : '✧ 드림코어 테마로 바꿨어요'); render();
+  });
   $('setSparkle').addEventListener('change', function () { data.settings.sparkle = this.checked; save(); renderSparkles(); });
 
   $('exportBtn').addEventListener('click', function () {
@@ -1823,7 +1838,7 @@
         var d = JSON.parse(r.result);
         if (!valid(d)) throw new Error('형식 오류');
         if (!confirm('현재 데이터(기록 ' + data.entries.length + '개)를 백업 파일(기록 ' + d.entries.length + '개)로 바꿀까요?')) return;
-        data = normalize(d); save(); syncCustomWords(); render(); toast('✧ 불러오기 완료');
+        data = normalize(d); save(); syncCustomWords(); applyTheme(); render(); toast('✧ 불러오기 완료');
       } catch (e) { toast('올바른 백업 파일이 아니에요'); }
     };
     r.readAsText(f);
@@ -1850,11 +1865,12 @@
 
   syncCustomWords();
   hydrateIcons();
+  applyTheme();
   runTick();
   renderSparkles();
   render();
   checkReminders();
   checkHashImport();
   // 생성 이미지가 있으면 정원 배경으로 사용
-  (function () { var im = new Image(); im.onload = function () { hasFieldImg = true; $('scene').classList.add('has-img'); if (currentView === 'home') renderGarden(getQuests()); }; im.src = 'assets/dream-field.png'; })();
+  (function () { var im = new Image(); im.onload = function () { hasFieldImg = true; applyTheme(); if (currentView === 'home') renderGarden(getQuests()); }; im.src = 'assets/dream-field.png'; })();
 })();
