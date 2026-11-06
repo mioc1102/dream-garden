@@ -322,48 +322,162 @@
       '<path d="M0 0 Q1 -6 0 -11" stroke="#8fcfb6" stroke-width="1.5" fill="none"/>' + petals +
       '<circle cx="0" cy="-11" r="2" fill="#fff"/></g></g>';
   }
-  function treeSVG(stage) {
-    var x = 180, g = 174, s = '';
-    var mound = '<ellipse cx="' + x + '" cy="' + (g + 3) + '" rx="34" ry="7" fill="#fff" opacity=".35" filter="url(#soft)"/><ellipse cx="' + x + '" cy="' + (g + 1) + '" rx="24" ry="5" fill="#d9c6ef"/>';
-    var leafA = '#ffd1ea', leafB = '#e2d2ff', leafC = '#c9eaff';
-    if (stage === 1) {
-      s = mound + '<g class="floaty"><circle cx="' + x + '" cy="' + (g - 14) + '" r="10" fill="#fff" opacity=".5" filter="url(#soft)"/>' +
-        '<ellipse cx="' + x + '" cy="' + (g - 13) + '" rx="6" ry="7.5" fill="#fff6fb" stroke="#e7c9f0" stroke-width="1.5"/>' +
-        '<path d="M' + (x - 2) + ' ' + (g - 15) + ' q3 -2 5 1" stroke="#e7c9f0" stroke-width="1.2" fill="none"/></g>';
-    } else if (stage === 2) {
-      s = mound + '<g class="sway"><path d="M' + x + ' ' + g + ' Q' + (x - 2) + ' ' + (g - 14) + ' ' + x + ' ' + (g - 26) + '" stroke="#a9dcc8" stroke-width="3" fill="none" stroke-linecap="round"/>' +
-        '<ellipse cx="' + (x - 10) + '" cy="' + (g - 28) + '" rx="11" ry="6" fill="' + leafA + '" transform="rotate(-25 ' + (x - 10) + ' ' + (g - 28) + ')"/>' +
-        '<ellipse cx="' + (x + 10) + '" cy="' + (g - 30) + '" rx="11" ry="6" fill="' + leafB + '" transform="rotate(25 ' + (x + 10) + ' ' + (g - 30) + ')"/></g>';
-    } else if (stage === 3) {
-      s = mound + '<g class="sway"><path d="M' + x + ' ' + g + ' Q' + (x + 3) + ' ' + (g - 25) + ' ' + x + ' ' + (g - 48) + '" stroke="#a9dcc8" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-        [[-13, -22, -30, leafA], [13, -28, 30, leafB], [-12, -42, -25, leafC], [12, -48, 25, leafA], [0, -54, 0, leafB]].map(function (l) {
-          return '<ellipse cx="' + (x + l[0]) + '" cy="' + (g + l[1]) + '" rx="13" ry="7" fill="' + l[3] + '" transform="rotate(' + l[2] + ' ' + (x + l[0]) + ' ' + (g + l[1]) + ')"/>';
-        }).join('') + '</g>';
-    } else {
-      var big = stage >= 5, huge = stage >= 6;
-      var tw = huge ? 16 : big ? 13 : 9, th = huge ? 72 : big ? 62 : 48;
-      var cy = g - th - (huge ? 14 : big ? 10 : 6), R = huge ? 46 : big ? 38 : 28;
-      s = mound + '<path d="M' + (x - tw / 2) + ' ' + g + ' Q' + (x - tw / 3) + ' ' + (g - th / 2) + ' ' + (x - 2) + ' ' + (g - th) + ' L' + (x + 2) + ' ' + (g - th) + ' Q' + (x + tw / 3) + ' ' + (g - th / 2) + ' ' + (x + tw / 2) + ' ' + g + ' Z" fill="#cdb6e6"/>' +
-        '<path d="M' + (x + 2) + ' ' + (g - th * .55) + ' q12 -6 18 -16" stroke="#cdb6e6" stroke-width="3.5" fill="none" stroke-linecap="round"/>';
-      var blobs = big
-        ? [[0, 0, R], [-R * .75, R * .35, R * .72], [R * .75, R * .35, R * .72], [-R * .4, -R * .5, R * .7], [R * .45, -R * .45, R * .66]]
-        : [[0, 0, R], [-R * .6, R * .3, R * .7], [R * .6, R * .3, R * .7]];
-      var cols = ['#ffd6ec', '#e6d6ff', '#cfe9ff', '#ffe3f2', '#f0e6ff'];
-      s += '<g class="sway"><circle cx="' + x + '" cy="' + cy + '" r="' + (R * 1.6) + '" fill="#fff" opacity=".35" filter="url(#soft)"/>' + blobs.map(function (b, i) {
-        return '<circle cx="' + (x + b[0]).toFixed(1) + '" cy="' + (cy + b[1]).toFixed(1) + '" r="' + b[2].toFixed(1) + '" fill="' + cols[i] + '"/>';
-      }).join('') +
-        '<circle cx="' + (x - R * .35) + '" cy="' + (cy - R * .45) + '" r="' + (R * .3) + '" fill="#fff" opacity=".7"/>';
-      if (stage >= 5) {
-        var dots = [[-.5, -.2], [.3, -.55], [.6, .25], [-.2, .35], [-.8, .5], [.1, -.05], [.85, -.1]];
-        s += dots.slice(0, huge ? 7 : 5).map(function (p, i) {
-          var px = x + p[0] * R, py = cy + p[1] * R;
-          return '<path class="twinkle" style="animation-delay:' + (i * .4) + 's" d="M' + px + ' ' + (py - 5) + ' Q' + px + ' ' + py + ' ' + (px + 5) + ' ' + py + ' Q' + px + ' ' + py + ' ' + px + ' ' + (py + 5) + ' Q' + px + ' ' + py + ' ' + (px - 5) + ' ' + py + ' Q' + px + ' ' + py + ' ' + px + ' ' + (py - 5) + 'Z" fill="' + (huge ? '#fff6b8' : '#fff') + '"/>';
-        }).join('');
-      }
-      s += '</g>';
+  // ===== 나무 그래픽 (단계별 · 테마별 팔레트, 색 배열은 [밝음, 중간, 어두움]) =====
+  var TREE_PAL = {
+    dream: { trunk: ['#f3e9fc', '#cdb6e6', '#a68bca'], la: ['#fff4fa', '#ffd3ea', '#e5a9d0'], lb: ['#f8f3ff', '#e2d4ff', '#b8a2ec'], lc: ['#f2f9ff', '#cfe9ff', '#9ccbef'], soil: ['#f4ecfc', '#d9c6ef', '#b39ad6'], stem: ['#e1f8ef', '#a3dbc5'], seed: ['#ffffff', '#f6e2f3', '#d3aee3'], fruit: ['#fffdf0', '#fff0a8', '#f2c75a'], bloom: '#ffffff', bloomC: '#ffe48a', grass: ['#c9f0e0', '#a6dcc6'], shadow: '#7b6aa8', bird: null },
+    plain: { trunk: ['#c9a27f', '#9b7051', '#6b4830'], la: ['#8ce5b5', '#23bb73', '#0b8b50'], lb: ['#a6eec8', '#34c985', '#0f9a5b'], lc: ['#72d8a3', '#19a862', '#087c47'], soil: ['#e2c3a2', '#bb9067', '#8d6646'], stem: ['#9be9bf', '#22b26c'], seed: ['#f0c99e', '#b97f52', '#7b4d2d'], fruit: ['#ffc2c6', '#f5505e', '#c41d2f'], bloom: '#ffd3dd', bloomC: '#ffc93d', grass: ['#7fdcab', '#3cbf7c'], shadow: '#0d3b24', bird: '#3182f6' },
+    dark: { trunk: ['#b08b6b', '#7f5c42', '#553a27'], la: ['#74dba6', '#1eaa66', '#0a7442'], lb: ['#90e4b9', '#2bb877', '#0c834c'], lc: ['#5ccb93', '#16975a', '#07683b'], soil: ['#8a6c53', '#634b39', '#41301f'], stem: ['#86ddb0', '#1fa564'], seed: ['#d4a679', '#9a6643', '#5f3c24'], fruit: ['#ffa3ab', '#ef4655', '#b0192a'], bloom: '#f4b8c8', bloomC: '#ffc93d', grass: ['#52c487', '#25945c'], shadow: '#000000', bird: '#4593fc' }
+  };
+  function f1(n) { return String(Math.round(n * 10) / 10); }
+  function E(t, a, inner) {
+    var s = '<' + t;
+    for (var k in a) s += ' ' + k + '="' + (typeof a[k] === 'number' ? f1(a[k]) : a[k]) + '"';
+    return s + (inner == null ? '/>' : '>' + inner + '</' + t + '>');
+  }
+  function tRad(id, c) {
+    return '<radialGradient id="' + id + '" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="' + c[0] + '"/><stop offset=".55" stop-color="' + c[1] + '"/><stop offset="1" stop-color="' + c[2] + '"/></radialGradient>';
+  }
+  function tLeaf(x, y, len, wid, ang, fill, vein) {
+    var d = 'M0 0 C' + f1(len * .28) + ' ' + f1(-wid) + ' ' + f1(len * .78) + ' ' + f1(-wid * .9) + ' ' + f1(len) + ' 0 C' + f1(len * .78) + ' ' + f1(wid * .9) + ' ' + f1(len * .28) + ' ' + f1(wid) + ' 0 0Z';
+    return '<g transform="translate(' + f1(x) + ' ' + f1(y) + ') rotate(' + ang + ')">' + E('path', { d: d, fill: fill }) +
+      (vein ? E('path', { d: 'M1 0 Q' + f1(len * .5) + ' ' + f1(-wid * .15) + ' ' + f1(len * .9) + ' 0', stroke: vein, 'stroke-width': .8, fill: 'none', opacity: .5, 'stroke-linecap': 'round' }) : '') + '</g>';
+  }
+  function tTuft(x, y, h, c) {
+    return [[-3.2, -.35, .8], [0, .06, 1.1], [3.2, .4, .88]].map(function (b) {
+      var bx = x + b[0];
+      return '<path d="M' + f1(bx - 1.3) + ' ' + f1(y) + ' Q' + f1(bx + b[1] * h * .3) + ' ' + f1(y - h * .5) + ' ' + f1(bx + b[1] * h) + ' ' + f1(y - h * b[2]) + ' Q' + f1(bx + b[1] * h * .5) + ' ' + f1(y - h * .45) + ' ' + f1(bx + 1.3) + ' ' + f1(y) + 'Z" fill="' + c + '"/>';
+    }).join('');
+  }
+  function tSpark(x, y, r, c, d) {
+    var q = ' ' + f1(x) + ' ' + f1(y) + ' ';
+    return '<path class="twinkle" style="animation-delay:' + d + 's" d="M' + f1(x) + ' ' + f1(y - r) + ' Q' + q + f1(x + r) + ' ' + f1(y) + ' Q' + q + f1(x) + ' ' + f1(y + r) + ' Q' + q + f1(x - r) + ' ' + f1(y) + ' Q' + q + f1(x) + ' ' + f1(y - r) + 'Z" fill="' + c + '"/>';
+  }
+  function tBloom(x, y, r, P) {
+    var s = '';
+    for (var i = 0; i < 5; i++) { var a = i * 1.2566 - 1.5708; s += E('circle', { cx: x + Math.cos(a) * r * .62, cy: y + Math.sin(a) * r * .62, r: r * .55, fill: P.bloom }); }
+    return s + E('circle', { cx: x, cy: y, r: r * .34, fill: P.bloomC });
+  }
+  function tFruit(x, y, r, P, dream, i) {
+    if (dream) return E('circle', { cx: x, cy: y, r: r * 2, fill: P.fruit[1], opacity: .55, filter: 'url(#tgGlow)' }) + E('circle', { cx: x, cy: y, r: r, fill: 'url(#tgFruit)' }) + tSpark(x + r * .9, y - r * 1.1, 3.2, '#fffbe0', i * .35);
+    return E('path', { d: 'M' + f1(x) + ' ' + f1(y - r + .5) + ' q.4 -2.4 2.2 -3.4', stroke: P.trunk[2], 'stroke-width': 1.1, fill: 'none', 'stroke-linecap': 'round' }) +
+      tLeaf(x + 1.2, y - r - 1.6, 4.5, 1.9, -20, P.la[1], null) +
+      E('circle', { cx: x, cy: y, r: r, fill: 'url(#tgFruit)' }) + E('ellipse', { cx: x - r * .38, cy: y - r * .35, rx: r * .3, ry: r * .2, fill: '#fff', opacity: .85 });
+  }
+  var CANOPY = [[0, 0, 1], [-.6, .25, .66], [.6, .25, .66], [-.38, -.4, .64], [.4, -.38, .62], [0, -.62, .52], [-.86, -.02, .44], [.86, .02, .44], [-.22, .46, .56], [.26, .48, .54]];
+  function tCanopy(cx, cy, R, P, dream) {
+    var k = R * .62, s = '', i;
+    s += CANOPY.map(function (b) { return E('circle', { cx: cx + b[0] * k, cy: cy + b[1] * k + R * .1, r: b[2] * k * 1.05, fill: P.la[2] }); }).join('');
+    s += CANOPY.map(function (b, i) { return E('circle', { cx: cx + b[0] * k, cy: cy + b[1] * k, r: b[2] * k, fill: 'url(#tg' + ['LA', 'LB', 'LA', 'LC', 'LB'][i % 5] + ')' }); }).join('');
+    for (i = 0; i < 16; i++) { // 잎결
+      var a = i * 2.39996, rr = Math.sqrt((i + .5) / 16) * R * .68, px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr * .78 + R * .06;
+      s += '<path d="M' + f1(px - 2.6) + ' ' + f1(py) + ' q2.6 -2.6 5.2 0" stroke="' + P.la[2] + '" stroke-width="1.1" fill="none" opacity=".32" stroke-linecap="round"/>';
     }
+    s += E('ellipse', { cx: cx - R * .3, cy: cy - R * .4, rx: R * .24, ry: R * .13, fill: '#fff', opacity: dream ? .6 : .3, transform: 'rotate(-28 ' + f1(cx - R * .3) + ' ' + f1(cy - R * .4) + ')' }) +
+      E('circle', { cx: cx + R * .02, cy: cy - R * .55, r: R * .055, fill: '#fff', opacity: dream ? .7 : .3 });
     return s;
   }
+  function tBird(x, y, c) {
+    return '<g class="bird" transform="translate(' + f1(x) + ' ' + f1(y) + ')">' +
+      E('path', { d: 'M-5 -6 L-12 -9.5 L-10.5 -4 Z', fill: c }) +
+      E('ellipse', { cx: 0, cy: -5.2, rx: 6.8, ry: 5, fill: c }) + E('circle', { cx: 4.4, cy: -10, r: 3.8, fill: c }) +
+      E('ellipse', { cx: 1.8, cy: -3.4, rx: 3.8, ry: 2.6, fill: '#fff', opacity: .92 }) +
+      E('path', { d: 'M-4.5 -7 Q0 -8.5 2.5 -4.5 Q-2 -3.8 -4.5 -7Z', fill: '#000', opacity: .16 }) +
+      E('circle', { cx: 5.4, cy: -10.6, r: .95, fill: '#191f28' }) + E('path', { d: 'M8 -10.6 L11.2 -9.6 L8 -8.6Z', fill: '#ffb020' }) +
+      E('path', { d: 'M-1 -.4 v2.2 M2 -.4 v2.2', stroke: '#ffb020', 'stroke-width': 1, 'stroke-linecap': 'round' }) + '</g>';
+  }
+  function growTree(stage, P, x, g, dream) {
+    var s = '', i, top, stem;
+    s += '<defs>' + tRad('tgLA', P.la) + tRad('tgLB', P.lb) + tRad('tgLC', P.lc) + tRad('tgSeed', P.seed) + tRad('tgFruit', P.fruit) +
+      '<linearGradient id="tgTrunk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + P.trunk[0] + '"/><stop offset=".45" stop-color="' + P.trunk[1] + '"/><stop offset="1" stop-color="' + P.trunk[2] + '"/></linearGradient>' +
+      '<linearGradient id="tgSoil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + P.soil[1] + '"/><stop offset="1" stop-color="' + P.soil[2] + '"/></linearGradient>' +
+      '<filter id="tgBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>' +
+      '<filter id="tgGlow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>';
+    var sc = [1.9, 1.6, 1.35, 1.25, 1.1, 1][stage - 1] || 1;
+    s += '<g transform="translate(' + x + ' ' + g + ') scale(' + sc + ') translate(' + (-x) + ' ' + (-g) + ')">';
+    var sw = stage === 1 ? 20 : stage <= 3 ? 26 : stage === 4 ? 36 : stage === 5 ? 50 : 66;
+    s += E('ellipse', { cx: x, cy: g + 2.5, rx: sw, ry: stage <= 3 ? 4 : 6.5, fill: P.shadow, opacity: dream ? .14 : .1 });
+    function mound(w) {
+      return E('ellipse', { cx: x, cy: g, rx: w, ry: w * .25, fill: 'url(#tgSoil)' }) +
+        E('ellipse', { cx: x - w * .12, cy: g - w * .11, rx: w * .55, ry: w * .08, fill: P.soil[0], opacity: .75 }) +
+        E('circle', { cx: x - w * .64, cy: g + 1, r: 1.7, fill: P.soil[2], opacity: .7 }) + E('circle', { cx: x + w * .56, cy: g - .4, r: 1.3, fill: P.soil[2], opacity: .7 }) +
+        E('circle', { cx: x + w * .3, cy: g + 3.4, r: 1.1, fill: P.soil[0] }) + E('circle', { cx: x - w * .32, cy: g + 3.6, r: .9, fill: P.soil[0] }) +
+        tTuft(x - w - 6, g + 3, 8, P.grass[1]) + tTuft(x + w + 5, g + 3, 6.5, P.grass[0]) + tTuft(x + w * .72, g + 4.5, 5, P.grass[1]);
+    }
+    if (dream && stage <= 3) s += E('circle', { cx: x, cy: g - 10 - stage * 8, r: 18 + stage * 8, fill: '#fff', opacity: .45, filter: 'url(#tgBlur)' });
+
+    if (stage === 1) { // 씨앗: 흙에 반쯤 묻혀 막 싹이 트려는 중
+      s += mound(30) + E('ellipse', { cx: x, cy: g - .5, rx: 13, ry: 3.4, fill: P.soil[2], opacity: .55 });
+      var seed = E('path', { d: 'M0 -13 C8 -11 10.5 3 0 12 C-10.5 3 -8 -11 0 -13Z', fill: 'url(#tgSeed)' }) +
+        E('path', { d: 'M0 -12 C3.4 -5 3.4 4 0 11', stroke: P.seed[2], 'stroke-width': .9, fill: 'none', opacity: .45 }) +
+        E('ellipse', { cx: -3.6, cy: -3.5, rx: 1.9, ry: 4.4, fill: '#fff', opacity: dream ? .9 : .45, transform: 'rotate(16 -3.6 -3.5)' }) +
+        E('path', { d: 'M-2.4 -11.6 L-.8 -9.2 L-2 -7.3 L.2 -5.6', stroke: P.seed[2], 'stroke-width': .9, fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }) +
+        E('path', { d: 'M0 -12.4 C-.8 -17.5 2.6 -21 6.2 -20.4 C5 -16.8 2.8 -14.4 0 -12.4Z', fill: P.stem[1] }) +
+        E('path', { d: 'M.9 -13.6 C1.4 -16.3 3.1 -18.6 5 -19.3', stroke: P.stem[0], 'stroke-width': .8, fill: 'none', 'stroke-linecap': 'round' });
+      s += '<g transform="translate(' + x + ' ' + (g - 8) + ') rotate(-8)"><g class="' + (dream ? 'floaty' : 'seed-wig') + '">' + seed + '</g></g>';
+      s += E('path', { d: 'M' + (x - 17) + ' ' + (g - 1) + ' Q' + x + ' ' + (g + 4) + ' ' + (x + 17) + ' ' + (g - 1) + ' Q' + (x + 21) + ' ' + (g + 4.5) + ' ' + x + ' ' + (g + 6.5) + ' Q' + (x - 21) + ' ' + (g + 4.5) + ' ' + (x - 17) + ' ' + (g - 1) + 'Z', fill: P.soil[1] }) +
+        E('circle', { cx: x - 8, cy: g + 3, r: 1.2, fill: P.soil[0] }) + E('circle', { cx: x + 6, cy: g + 4, r: 1, fill: P.soil[2] });
+      s += tSpark(x + 15, g - 26, 3.4, dream ? '#fff' : P.bloomC, 0) + tSpark(x - 16, g - 18, 2.6, dream ? '#fff6b8' : P.stem[1], .9) + tSpark(x + 22, g - 12, 2.2, dream ? '#fff' : P.bloomC, 1.7);
+    } else if (stage === 2) { // 새싹: 떡잎 두 장과 이슬
+      s += mound(30);
+      s += E('path', { d: 'M' + (x - 14) + ' ' + (g - .5) + ' q2 -7 8.5 -6.2 q-3.2 3 -2.2 7z', fill: 'url(#tgSeed)' }) + E('path', { d: 'M' + (x + 13) + ' ' + (g + .5) + ' q-1.2 -6.4 -7.6 -6.2 q3.2 3 2.2 7z', fill: 'url(#tgSeed)' });
+      top = g - 34;
+      stem = E('path', { d: 'M' + x + ' ' + g + ' C' + (x - 4) + ' ' + (g - 12) + ' ' + (x + 4) + ' ' + (g - 22) + ' ' + x + ' ' + top, stroke: P.stem[1], 'stroke-width': 3.4, fill: 'none', 'stroke-linecap': 'round' }) +
+        E('path', { d: 'M' + (x - .9) + ' ' + (g - 3) + ' C' + (x - 4.6) + ' ' + (g - 13) + ' ' + (x + 3) + ' ' + (g - 22) + ' ' + (x - .9) + ' ' + (top + 2), stroke: P.stem[0], 'stroke-width': 1, fill: 'none', opacity: .75, 'stroke-linecap': 'round' });
+      var lv = tLeaf(x, top, 21, 8.5, -158, 'url(#tgLA)', P.la[2]) + tLeaf(x, top, 23, 9, -24, 'url(#tgLB)', P.lb[2]) + tLeaf(x, top - 1, 8, 3.4, -94, 'url(#tgLC)', null);
+      var dew = E('circle', { cx: x + 12.5, cy: top - 9.2, r: 2.5, fill: '#fff', opacity: .7 }) + E('circle', { cx: x + 11.8, cy: top - 10, r: .85, fill: '#fff' });
+      s += '<g class="sway">' + stem + lv + dew + '</g>';
+      s += tSpark(x - 24, top - 6, 2.8, dream ? '#fff' : P.bloomC, .3) + tSpark(x + 27, top + 6, 2.2, dream ? '#fff6b8' : P.stem[1], 1.4);
+    } else if (stage === 3) { // 묘목: 지지대에 묶인 어린 나무
+      s += mound(32);
+      s += E('rect', { x: x - 15, y: g - 50, width: 3.2, height: 52, rx: 1.3, fill: P.trunk[1] }) + E('rect', { x: x - 15, y: g - 50, width: 1.2, height: 52, rx: .6, fill: P.trunk[0], opacity: .7 });
+      top = g - 64;
+      stem = E('path', { d: 'M' + x + ' ' + g + ' C' + (x - 3) + ' ' + (g - 20) + ' ' + (x + 4) + ' ' + (g - 42) + ' ' + x + ' ' + top, stroke: P.stem[1], 'stroke-width': 4.4, fill: 'none', 'stroke-linecap': 'round' }) +
+        E('path', { d: 'M' + (x - 1.2) + ' ' + (g - 3) + ' C' + (x - 4) + ' ' + (g - 21) + ' ' + (x + 3) + ' ' + (g - 42) + ' ' + (x - 1.1) + ' ' + (top + 3), stroke: P.stem[0], 'stroke-width': 1.1, fill: 'none', opacity: .7, 'stroke-linecap': 'round' });
+      var lvs = '';
+      [[-14, -1, 18, 7], [-22, 1, 20, 7.5], [-31, -1, 21, 8], [-40, 1, 20, 7.5], [-49, -1, 17, 6.5], [-56, 1, 15, 6]].forEach(function (l, i) {
+        lvs += tLeaf(x, g + l[0], l[2], l[3], l[1] < 0 ? -150 - i * 2 : -30 + i * 2, 'url(#tg' + ['LA', 'LB', 'LC'][i % 3] + ')', P.la[2]);
+      });
+      lvs += tLeaf(x, top, 11, 4.2, -104, 'url(#tgLB)', null) + tLeaf(x, top, 10, 3.8, -72, 'url(#tgLA)', null);
+      s += '<g class="sway">' + stem + lvs + '</g>';
+      s += E('path', { d: 'M' + (x - 13.6) + ' ' + (g - 31) + ' q6.6 -3.4 13.4 -.6 q-6.6 3.6 -13.4 .6', stroke: dream ? '#ffc3e4' : '#f5a524', 'stroke-width': 1.5, fill: 'none' });
+      s += tSpark(x + 28, top + 4, 2.8, dream ? '#fff' : P.bloomC, .5);
+    } else { // 나무: 4 어린나무 · 5 꽃 피는 나무 · 6 열매 맺는 큰 나무
+      var big = stage >= 5, huge = stage >= 6;
+      var th = huge ? 62 : big ? 54 : 42, tw = huge ? 18 : big ? 14 : 10, R = huge ? 56 : big ? 46 : 34;
+      var cy = g - th - R * .3, b = tw / 2, t = tw * .3, fl = tw * .55, bw = tw * .42;
+      s += E('ellipse', { cx: x, cy: g + 1, rx: R * .95, ry: 5.5, fill: P.grass[1], opacity: .45 });
+      s += tTuft(x - R * .9, g + 3, 8, P.grass[1]) + tTuft(x - R * .4, g + 5, 6, P.grass[0]) + tTuft(x + R * .55, g + 4, 7.5, P.grass[1]) + tTuft(x + R * 1.05, g + 2, 6, P.grass[0]);
+      if (big) s += [[-1, .9], [1, 1], [-.35, .5]].map(function (r) {
+        return E('path', { d: 'M' + f1(x + r[0] * b * .5) + ' ' + f1(g - 2) + ' q' + f1(r[0] * tw * .5) + ' 2.4 ' + f1(r[0] * tw * 1.25 * r[1]) + ' 4.6', stroke: P.trunk[1], 'stroke-width': huge ? 3.4 : 2.8, fill: 'none', 'stroke-linecap': 'round' });
+      }).join('');
+      var tree = '';
+      if (dream) tree += E('circle', { cx: x, cy: cy, r: R * 1.3, fill: '#fff', opacity: .28, filter: 'url(#tgBlur)' });
+      tree += E('path', { d: 'M' + (x - b - fl) + ' ' + g + ' Q' + (x - b) + ' ' + (g - 2) + ' ' + (x - b * .85) + ' ' + (g - th * .3) + ' L' + (x - t) + ' ' + (g - th - 4) + ' L' + (x + t) + ' ' + (g - th - 4) + ' L' + (x + b * .85) + ' ' + (g - th * .3) + ' Q' + (x + b) + ' ' + (g - 2) + ' ' + (x + b + fl) + ' ' + g + 'Z', fill: 'url(#tgTrunk)' });
+      tree += E('path', { d: 'M' + x + ' ' + f1(g - th * .55) + ' Q' + f1(x - R * .25) + ' ' + f1(g - th * .75) + ' ' + f1(x - R * .55) + ' ' + f1(cy + R * .15), stroke: P.trunk[1], 'stroke-width': bw, fill: 'none', 'stroke-linecap': 'round' }) +
+        E('path', { d: 'M' + (x + 1) + ' ' + f1(g - th * .75) + ' Q' + f1(x + R * .2) + ' ' + (g - th - 2) + ' ' + f1(x + R * .5) + ' ' + f1(cy + R * .05), stroke: P.trunk[1], 'stroke-width': bw * .85, fill: 'none', 'stroke-linecap': 'round' });
+      tree += E('path', { d: 'M' + f1(x - b * .45) + ' ' + (g - 5) + ' q-1 -8 0 -15 M' + f1(x + b * .3) + ' ' + f1(g - th * .38) + ' q1.2 -6 0 -12 M' + f1(x - b * .1) + ' ' + f1(g - th * .72) + ' q-.8 -4 0 -8', stroke: P.trunk[2], 'stroke-width': 1, fill: 'none', opacity: .55, 'stroke-linecap': 'round' });
+      if (huge) tree += E('ellipse', { cx: x + b * .15, cy: g - th * .5, rx: 2.4, ry: 3.4, fill: P.trunk[2], opacity: .8 });
+      var spots = [[-.45, -.15], [.3, -.42], [.55, .22], [-.18, .3], [-.66, .36], [.08, -.68], [.74, -.12], [-.32, -.55], [.3, .5]];
+      if (huge) {
+        tree += tCanopy(x - R * .82, cy + R * .3, R * .55, P, dream) + tCanopy(x + R * .82, cy + R * .26, R * .55, P, dream);
+        spots = spots.concat([[-1.02, .3], [-.8, .58], [1.0, .2], [.86, .55]]);
+      }
+      tree += tCanopy(x, cy, R, P, dream);
+      if (huge) tree += spots.map(function (p, i) { return tFruit(x + p[0] * R, cy + p[1] * R, dream ? 3.4 : 4.3, P, dream, i); }).join('');
+      else if (big) tree += spots.slice(0, 8).map(function (p, i) { return dream ? tSpark(x + p[0] * R, cy + p[1] * R, 4.6, '#fff', i * .4) : tBloom(x + p[0] * R, cy + p[1] * R, 3.6, P); }).join('');
+      else tree += [[-.4, -.1], [.38, -.3], [.1, .3]].map(function (p) { return tLeaf(x + p[0] * R, cy + p[1] * R, 6, 2.6, -40, P.la[0], null); }).join('');
+      if (huge && P.bird) tree += tBird(x + R * .25, cy - R * .6, P.bird);
+      s += '<g class="sway">' + tree + '</g>';
+      if (big) s += [[-.5, .48, -18, 0], [.42, .52, 22, -2.6], [.08, .58, -12, -5.1]].map(function (f) {
+        var fx = x + f[0] * R, fy = cy + f[1] * R;
+        var piece = dream ? E('ellipse', { cx: 0, cy: 0, rx: 3.4, ry: 2, fill: '#ffd3ea' }) : tLeaf(-3, 0, 7, 2.8, 20, P.la[1], null);
+        return '<g transform="translate(' + f1(fx) + ' ' + f1(fy) + ')"><g class="leaf-fall" style="--dx:' + f[2] + 'px;--dy:' + f1(g - fy - 1) + 'px;animation-delay:' + f[3] + 's">' + piece + '</g></g>';
+      }).join('');
+      if (huge && dream) s += tSpark(x - R * 1.2, cy - R * .5, 4, '#fff6b8', .2) + tSpark(x + R * 1.25, cy - R * .6, 3.4, '#fff', 1.1);
+    }
+    return s + '</g>';
+  }
+  function treeSVG(stage) { return growTree(stage, TREE_PAL.dream, 180, 174, true); }
   function momoSVG(mood) { // 구름 요정
     var mouth = mood === 'happy' ? '<path d="M-3.5 3 Q0 7 3.5 3" stroke="#8a78b8" stroke-width="1.6" fill="#ffc3dc" stroke-linecap="round"/>'
       : mood === 'sleep' ? '<path d="M-2 4 h4" stroke="#8a78b8" stroke-width="1.5" stroke-linecap="round"/>'
@@ -380,22 +494,8 @@
       (mood === 'sleep' ? '<text x="18" y="-26" font-size="10" fill="#fff" font-family="serif" font-style="italic">z z</text>' : '') +
       '</g></g>';
   }
-  // 일반 테마: 단순한 플랫 나무
-  function plainTreeSVG(stage) {
-    var x = 180, g = 176, G1 = '#17b26a', G2 = '#36cc86', G3 = '#7be0ae', T = '#a07a5c', s = '';
-    if (stage === 1) return '<ellipse cx="' + x + '" cy="' + g + '" rx="18" ry="4" fill="#d9cbbd"/><circle cx="' + x + '" cy="' + (g - 6) + '" r="5" fill="' + T + '"/>';
-    if (stage === 2) return '<rect x="' + (x - 1.5) + '" y="' + (g - 24) + '" width="3" height="24" rx="1.5" fill="' + G1 + '"/>' +
-      '<ellipse cx="' + (x - 9) + '" cy="' + (g - 24) + '" rx="9" ry="5" fill="' + G2 + '"/><ellipse cx="' + (x + 9) + '" cy="' + (g - 26) + '" rx="9" ry="5" fill="' + G1 + '"/>';
-    if (stage === 3) return '<rect x="' + (x - 2) + '" y="' + (g - 44) + '" width="4" height="44" rx="2" fill="' + G1 + '"/>' +
-      [[-11, -20, G2], [11, -26, G1], [-10, -38, G1], [10, -44, G2]].map(function (l) { return '<ellipse cx="' + (x + l[0]) + '" cy="' + (g + l[1]) + '" rx="11" ry="6" fill="' + l[2] + '"/>'; }).join('');
-    var big = stage >= 5, huge = stage >= 6, th = huge ? 64 : big ? 56 : 44, tw = huge ? 14 : big ? 11 : 8, R = huge ? 44 : big ? 36 : 28, cy = g - th - R * .55;
-    s = '<rect x="' + (x - tw / 2) + '" y="' + (g - th) + '" width="' + tw + '" height="' + th + '" rx="' + (tw / 3) + '" fill="' + T + '"/>';
-    var blobs = big ? [[0, 0, R, G2], [-R * .7, R * .3, R * .7, G1], [R * .7, R * .3, R * .7, G1], [0, -R * .55, R * .7, G3]] : [[0, 0, R, G2]];
-    s += blobs.map(function (b) { return '<circle cx="' + (x + b[0]).toFixed(1) + '" cy="' + (cy + b[1]).toFixed(1) + '" r="' + b[2].toFixed(1) + '" fill="' + b[3] + '"/>'; }).join('');
-    if (huge) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4], [-.7, .45], [.1, -.75]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="4" fill="#f04452"/>'; }).join('');
-    else if (big) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="3" fill="#fff"/>'; }).join('');
-    return s;
-  }
+  // 일반/다크 테마 나무
+  function plainTreeSVG(stage) { return growTree(stage, isDark() ? TREE_PAL.dark : TREE_PAL.plain, 180, 176, false); }
   function renderPlainGarden(quests, L, stage, fl) {
     var dots = fl.map(function (col, i) {
       var x = 18 + ((i * 97 + 31) % 324), y = 186 + ((i * 53) % 16);

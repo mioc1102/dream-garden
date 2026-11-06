@@ -854,3 +854,12 @@ html.theme-dark {
 
 .theme-plain .eng-nav .prog .bar { box-shadow: none; }
 .theme-plain .choice .n { font-style: normal; }
+
+/* ===================== 나무 그래픽 애니메이션 ===================== */
+.seed-wig { transform-box: fill-box; transform-origin: 50% 100%; animation: seed-wig 3.2s ease-in-out infinite; }
+@keyframes seed-wig { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.leaf-fall { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; animation: leaf-fall 7.8s ease-in infinite; }
+@keyframes leaf-fall { 0% { opacity: 0; transform: translate(0, 0) rotate(0); } 10% { opacity: 1; } 50% { transform: translate(calc(var(--dx) * .6), calc(var(--dy) * .45)) rotate(150deg); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(280deg); } }
+.bird { animation: bird-hop 4s ease-in-out infinite; }
+@keyframes bird-hop { 0%, 70%, 100% { translate: 0 0; } 76% { translate: 0 -3px; } 82% { translate: 0 0; } 88% { translate: 0 -2px; } }
+@media (prefers-reduced-motion: reduce) { .seed-wig, .leaf-fall, .bird, .sway, .floaty { animation: none; } }
