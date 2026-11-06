@@ -799,3 +799,58 @@ html.theme-plain {
 .theme-opt .pv.plain i:first-child { background: #3182f6; }
 .theme-opt b { display: block; font-size: 14px; }
 .theme-opt span { font-size: 12px; color: var(--muted); }
+
+/* ===================== 다크 모드 (일반 테마 위에 덮어쓰기) ===================== */
+html.theme-dark {
+  --g900: #f9fafb; --g800: #e4e4e7; --g700: #c3c3c8; --g600: #9e9ea6; --g500: #80808a; --g400: #62626d; --g300: #4d4d59; --g200: #3a3a45; --g100: #2a2a33; --g50: #222229;
+  --blue: #4593fc; --blue-d: #3182f6; --blue-50: rgba(69,147,252,.16); --blue-100: rgba(69,147,252,.28);
+  --good: #20c77f; --bad: #ff5b68;
+  --card: #1c1c22; --bg: #111115;
+  color-scheme: dark;
+}
+.theme-dark body { background: var(--bg) !important; color: var(--g900); }
+.theme-dark .hud { background: rgba(17,17,21,.92); }
+.theme-dark .card, .theme-dark .scene, .theme-dark .eng-hero, .theme-dark .flash .face, .theme-dark .flash .back, .theme-dark .q-card,
+.theme-dark .choice, .theme-dark .eng-actions .btn { background: var(--card); }
+.theme-dark .eng-actions .btn:hover, .theme-dark .choice:hover, .theme-dark .quest:hover, .theme-dark .rt:hover { background: var(--g50); }
+.theme-dark .eng-actions .btn.sky { background: var(--blue); }
+.theme-dark .pill { background: var(--card); }
+.theme-dark .bubble, .theme-dark .scene-tag { background: #2a2a33; color: var(--g800); box-shadow: none; }
+.theme-dark .bubble::after { border-top-color: #2a2a33; }
+.theme-dark .field:focus { background: var(--g100); }
+.theme-dark .field, .theme-dark .dlg-form input, .theme-dark .dlg-form select, .theme-dark .date-mini, .theme-dark .min-input { background: var(--g100); color: var(--g900); }
+.theme-dark .part-chip, .theme-dark .day-chip, .theme-dark .opt, .theme-dark .dom, .theme-dark .rt-check { background: var(--g50); border-color: var(--g200); }
+.theme-dark .cat-chip.sel { background: var(--g900); color: #111115; }
+.theme-dark .cat-chip.sel .dot { background: #111115; }
+.theme-dark .ring > div { background: var(--card); }
+.theme-dark .seg button.on { background: var(--g200); box-shadow: none; }
+.theme-dark .dock { background: rgba(24,24,29,.97); box-shadow: 0 -1px 0 var(--g100); }
+.theme-dark dialog { background: var(--card); color: var(--g900); box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.theme-dark dialog::backdrop { background: rgba(0,0,0,.6); }
+.theme-dark .toast { background: rgba(58,58,69,.97); }
+.theme-dark .quest .q-ic, .theme-dark .rt .q-ic, .theme-dark .entries .e-ic, .theme-dark .cat-chip .dot, .theme-dark .ic-prev, .theme-dark .exam-ic {
+  background: color-mix(in srgb, var(--c, #4593fc) 22%, #1c1c22); color: color-mix(in srgb, var(--c, #4593fc), #ffffff 25%); }
+.theme-dark .cat-chip.sel .dot { color: color-mix(in srgb, var(--c), #ffffff 10%); }
+.theme-dark .stat .name .ic { color: color-mix(in srgb, var(--c, #4593fc), #ffffff 25%); }
+.theme-dark .eng-step.done, .theme-dark .choice.right, .theme-dark .tag.ok, .theme-dark .auto-tag { background: rgba(32,199,127,.15); }
+.theme-dark .choice.wrong, .theme-dark .tag.wrong { background: rgba(255,91,104,.15); }
+.theme-dark .tag.new { background: rgba(255,159,10,.16); color: #ffb340; }
+.theme-dark .tag.ok, .theme-dark .auto-tag { color: #3ddc97; }
+.theme-dark .ptag { background: var(--blue-50); }
+.theme-dark mark { background: var(--blue-100); color: #9cc6ff; }
+.theme-dark .chart .col span, .theme-dark .legend i { filter: saturate(1.4) brightness(.95); }
+.theme-dark .cal-cell { color: var(--g800); }
+.theme-dark .cal-cell[style*="color:#fff"] { color: #111 !important; }
+.theme-dark .lv-halo { background: var(--blue-50); }
+.theme-dark .theme-opt { background: var(--g50); border-color: var(--g200); }
+.theme-dark input[type=color] { background: var(--g100); border-color: var(--g200); }
+.theme-dark .tag { background: var(--g100); }
+.theme-opt .pv.dark { background: #111115; }
+.theme-opt .pv.dark i { background: #1c1c22; }
+.theme-opt .pv.dark i:first-child { background: #4593fc; }
+.theme-opt .pv.auto { background: linear-gradient(135deg, #f2f4f6 50%, #111115 50%); }
+.theme-opt .pv.auto i { background: #3182f6; opacity: .9; }
+.theme-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+
+.theme-plain .eng-nav .prog .bar { box-shadow: none; }
+.theme-plain .choice .n { font-style: normal; }

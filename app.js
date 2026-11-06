@@ -291,13 +291,17 @@
 
   // ================= 꿈속 정원 장면 (SVG) =================
   var hasFieldImg = false;
-  function theme() { return data.settings.theme === 'plain' ? 'plain' : 'dream'; }
+  var darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function theme() { var t = data.settings.theme; return t === 'plain' || t === 'dark' || t === 'auto' ? 'plain' : 'dream'; }
+  function isDark() { var t = data.settings.theme; return t === 'dark' || (t === 'auto' && !!darkMQ && darkMQ.matches); }
+  if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', function () { if (data.settings.theme === 'auto') { applyTheme(); render(); } });
   function useImg() { return hasFieldImg && theme() === 'dream'; }
   function applyTheme() {
     var plain = theme() === 'plain';
     document.documentElement.classList.toggle('theme-plain', plain);
+    document.documentElement.classList.toggle('theme-dark', plain && isDark());
     $('scene').classList.toggle('has-img', useImg());
-    var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = plain ? '#f3f4f8' : '#d9e6ff';
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = plain ? (isDark() ? '#111115' : '#f2f4f6') : '#d9e6ff';
     var sb = document.querySelector('#addForm button[type=submit]'); if (sb) sb.lastChild.textContent = plain ? '기록하기' : '꿈에 기록하기';
     document.title = plain ? '성장 기록 · 꿈속 정원' : '꿈속 정원 ✧ dream garden';
   }
@@ -399,7 +403,7 @@
       return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + col + '"/>';
     }).join('');
     $('garden').innerHTML = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' +
-      '<defs><linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8f3ff"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="360" height="212" fill="url(#pSky)"/><ellipse cx="180" cy="200" rx="240" ry="28" fill="#e3f7ec"/>' +
+      '<defs><linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (isDark() ? '#1b2638' : '#e8f3ff') + '"/><stop offset="1" stop-color="' + (isDark() ? '#1c1c22' : '#ffffff') + '"/></linearGradient></defs><rect width="360" height="212" fill="url(#pSky)"/><ellipse cx="180" cy="200" rx="240" ry="28" fill="' + (isDark() ? '#1d3329' : '#e3f7ec') + '"/>' +
       plainTreeSVG(stage) + dots + '</svg>';
     $('sceneTag').textContent = 'Lv.' + L + ' ' + titleOf(L) + ' · 목표 달성 ' + fl.length + '회 (30일)';
     var done = quests.filter(function (q) { return q.done; }).length;
@@ -1809,7 +1813,7 @@
     $('setAutoSpeak').checked = !!data.settings.autoSpeak;
     $('setSound').checked = !!data.settings.sound;
     $('setSparkle').checked = !!data.settings.sparkle;
-    document.querySelectorAll('.theme-opt').forEach(function (b) { b.classList.toggle('on', b.dataset.theme === theme()); });
+    document.querySelectorAll('.theme-opt').forEach(function (b) { b.classList.toggle('on', b.dataset.theme === (data.settings.theme || 'dream')); });
     renderNotiSettings();
     $('backupInfo').textContent = '분야 ' + data.categories.length + '개 · 기록 ' + data.entries.length + '개 · 학습 단어 ' + Object.keys(data.english.words).filter(function (w) { return data.english.words[w].intro; }).length + '개';
   }
@@ -1850,7 +1854,7 @@
   $('themeGrid').addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-theme]'); if (!b) return;
     data.settings.theme = b.dataset.theme; save(); applyTheme(); sfx('pop');
-    toast(theme() === 'plain' ? '일반 테마로 바꿨어요' : '✧ 드림코어 테마로 바꿨어요'); render();
+    toast({ dream: '✧ 드림코어 테마로 바꿨어요', plain: '일반 테마로 바꿨어요', dark: '다크 모드로 바꿨어요', auto: '기기 설정에 맞춰 자동으로 바뀌어요' }[data.settings.theme] || ''); render();
   });
   $('setSparkle').addEventListener('change', function () { data.settings.sparkle = this.checked; save(); renderSparkles(); });
 

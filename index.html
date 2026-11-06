@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="style.css">
-<script>try { var _d = JSON.parse(localStorage.getItem('growth-log-v1')); if (_d && _d.settings && _d.settings.theme === 'plain') document.documentElement.classList.add('theme-plain'); } catch (e) {}</script>
+<script>try { var _d = JSON.parse(localStorage.getItem('growth-log-v1')), _t = _d && _d.settings && _d.settings.theme, _c = document.documentElement.classList; if (_t === 'plain' || _t === 'dark' || _t === 'auto') _c.add('theme-plain'); if (_t === 'dark' || (_t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) _c.add('theme-dark'); } catch (e) {}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -156,6 +156,8 @@
       <div class="theme-grid" id="themeGrid">
         <button class="theme-opt" data-theme="dream"><div class="pv dream"><i></i><i></i><i></i></div><b>드림코어</b><span>파스텔 구름 · 반짝이 · 몽환</span></button>
         <button class="theme-opt" data-theme="plain"><div class="pv plain"><i></i><i></i><i></i></div><b>일반</b><span>밝고 또렷한 화이트 · 파란 포인트</span></button>
+        <button class="theme-opt" data-theme="dark"><div class="pv dark"><i></i><i></i><i></i></div><b>다크</b><span>어두운 배경 · 눈이 편한 밤 모드</span></button>
+        <button class="theme-opt" data-theme="auto"><div class="pv auto"><i></i><i></i><i></i></div><b>자동</b><span>기기 설정에 맞춰 일반 ↔ 다크</span></button>
       </div>
     </div>
     <div class="card">
