@@ -244,13 +244,14 @@
   var FX_COLORS = ['#ffc3e4', '#d6c2ff', '#a9dcff', '#fff1b5', '#bff3e0', '#ffffff'];
   var FX_CHARS = ['✦', '✧', '⋆', '✦', '·'];
   function confetti(n) {
-    var L = $('fx');
+    var L = $('fx'), plain = theme() === 'plain';
+    if (plain) n = Math.round((n || 40) / 2);
     for (var i = 0; i < (n || 40); i++) {
       var s = document.createElement('span');
-      s.textContent = FX_CHARS[i % FX_CHARS.length];
+      s.textContent = plain ? '●' : FX_CHARS[i % FX_CHARS.length];
       s.style.left = Math.random() * 100 + 'vw';
-      s.style.color = FX_COLORS[i % FX_COLORS.length];
-      s.style.fontSize = (10 + Math.random() * 18) + 'px';
+      s.style.color = plain ? ['#4f6bed', '#43b36f', '#f5b70a', '#ef6b6b'][i % 4] : FX_COLORS[i % FX_COLORS.length];
+      s.style.fontSize = plain ? (6 + Math.random() * 5) + 'px' : (10 + Math.random() * 18) + 'px';
       s.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
       s.style.animationDelay = (Math.random() * .5) + 's';
       s.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
@@ -297,6 +298,7 @@
     document.documentElement.classList.toggle('theme-plain', plain);
     $('scene').classList.toggle('has-img', useImg());
     var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = plain ? '#f3f4f8' : '#d9e6ff';
+    var sb = document.querySelector('#addForm button[type=submit]'); if (sb) sb.lastChild.textContent = plain ? '기록하기' : '꿈에 기록하기';
     document.title = plain ? '성장 기록 · 꿈속 정원' : '꿈속 정원 ✧ dream garden';
   }
   function skyFor(h) {
@@ -374,6 +376,35 @@
       (mood === 'sleep' ? '<text x="18" y="-26" font-size="10" fill="#fff" font-family="serif" font-style="italic">z z</text>' : '') +
       '</g></g>';
   }
+  // 일반 테마: 단순한 플랫 나무
+  function plainTreeSVG(stage) {
+    var x = 180, g = 176, G1 = '#43b36f', G2 = '#5cc685', G3 = '#7fd59f', T = '#8b6b52', s = '';
+    if (stage === 1) return '<ellipse cx="' + x + '" cy="' + g + '" rx="18" ry="4" fill="#d9cbbd"/><circle cx="' + x + '" cy="' + (g - 6) + '" r="5" fill="' + T + '"/>';
+    if (stage === 2) return '<rect x="' + (x - 1.5) + '" y="' + (g - 24) + '" width="3" height="24" rx="1.5" fill="' + G1 + '"/>' +
+      '<ellipse cx="' + (x - 9) + '" cy="' + (g - 24) + '" rx="9" ry="5" fill="' + G2 + '"/><ellipse cx="' + (x + 9) + '" cy="' + (g - 26) + '" rx="9" ry="5" fill="' + G1 + '"/>';
+    if (stage === 3) return '<rect x="' + (x - 2) + '" y="' + (g - 44) + '" width="4" height="44" rx="2" fill="' + G1 + '"/>' +
+      [[-11, -20, G2], [11, -26, G1], [-10, -38, G1], [10, -44, G2]].map(function (l) { return '<ellipse cx="' + (x + l[0]) + '" cy="' + (g + l[1]) + '" rx="11" ry="6" fill="' + l[2] + '"/>'; }).join('');
+    var big = stage >= 5, huge = stage >= 6, th = huge ? 64 : big ? 56 : 44, tw = huge ? 14 : big ? 11 : 8, R = huge ? 44 : big ? 36 : 28, cy = g - th - R * .55;
+    s = '<rect x="' + (x - tw / 2) + '" y="' + (g - th) + '" width="' + tw + '" height="' + th + '" rx="' + (tw / 3) + '" fill="' + T + '"/>';
+    var blobs = big ? [[0, 0, R, G2], [-R * .7, R * .3, R * .7, G1], [R * .7, R * .3, R * .7, G1], [0, -R * .55, R * .7, G3]] : [[0, 0, R, G2]];
+    s += blobs.map(function (b) { return '<circle cx="' + (x + b[0]).toFixed(1) + '" cy="' + (cy + b[1]).toFixed(1) + '" r="' + b[2].toFixed(1) + '" fill="' + b[3] + '"/>'; }).join('');
+    if (huge) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4], [-.7, .45], [.1, -.75]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="4" fill="#ef6b6b"/>'; }).join('');
+    else if (big) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="3" fill="#fff"/>'; }).join('');
+    return s;
+  }
+  function renderPlainGarden(quests, L, stage, fl) {
+    var dots = fl.map(function (col, i) {
+      var x = 18 + ((i * 97 + 31) % 324), y = 186 + ((i * 53) % 16);
+      if (Math.abs(x - 180) < 30) x += x < 180 ? -36 : 36;
+      return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + col + '"/>';
+    }).join('');
+    $('garden').innerHTML = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="360" height="212" fill="#f5f7fb"/><rect y="176" width="360" height="36" fill="#e7f3ec"/><rect y="176" width="360" height="1.5" fill="#cfe6d8"/>' +
+      plainTreeSVG(stage) + dots + '</svg>';
+    $('sceneTag').textContent = 'Lv.' + L + ' ' + titleOf(L) + ' · 목표 달성 ' + fl.length + '회 (30일)';
+    var done = quests.filter(function (q) { return q.done; }).length;
+    if (!bubbleLocked) setBubble(quests.length && done === quests.length ? '오늘 할 일을 모두 끝냈어요' : '오늘 퀘스트 ' + done + ' / ' + quests.length + ' 완료');
+  }
   var lastFlowerCount = null;
   function renderGarden(quests) {
     var h = new Date().getHours(), sky = skyFor(h), i;
@@ -384,6 +415,7 @@
       data.categories.forEach(function (c) { if (c.dailyGoalMin && (agg[c.id] || {})[d] >= c.dailyGoalMin) fl.push(c.color); });
     }
     fl = fl.slice(-42);
+    if (theme() === 'plain') { lastFlowerCount = fl.length; return renderPlainGarden(quests, L, stage, fl); }
     var isNewFlower = lastFlowerCount !== null && fl.length > lastFlowerCount;
     var flowers = fl.map(function (col, i) {
       var x = 14 + ((i * 97 + 31) % 332), y = 184 + ((i * 53) % 20);
