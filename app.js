@@ -250,7 +250,7 @@
       var s = document.createElement('span');
       s.textContent = plain ? '●' : FX_CHARS[i % FX_CHARS.length];
       s.style.left = Math.random() * 100 + 'vw';
-      s.style.color = plain ? ['#4f6bed', '#43b36f', '#f5b70a', '#ef6b6b'][i % 4] : FX_COLORS[i % FX_COLORS.length];
+      s.style.color = plain ? ['#3182f6', '#17b26a', '#ffc342', '#f04452'][i % 4] : FX_COLORS[i % FX_COLORS.length];
       s.style.fontSize = plain ? (6 + Math.random() * 5) + 'px' : (10 + Math.random() * 18) + 'px';
       s.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
       s.style.animationDelay = (Math.random() * .5) + 's';
@@ -378,7 +378,7 @@
   }
   // 일반 테마: 단순한 플랫 나무
   function plainTreeSVG(stage) {
-    var x = 180, g = 176, G1 = '#43b36f', G2 = '#5cc685', G3 = '#7fd59f', T = '#8b6b52', s = '';
+    var x = 180, g = 176, G1 = '#17b26a', G2 = '#36cc86', G3 = '#7be0ae', T = '#a07a5c', s = '';
     if (stage === 1) return '<ellipse cx="' + x + '" cy="' + g + '" rx="18" ry="4" fill="#d9cbbd"/><circle cx="' + x + '" cy="' + (g - 6) + '" r="5" fill="' + T + '"/>';
     if (stage === 2) return '<rect x="' + (x - 1.5) + '" y="' + (g - 24) + '" width="3" height="24" rx="1.5" fill="' + G1 + '"/>' +
       '<ellipse cx="' + (x - 9) + '" cy="' + (g - 24) + '" rx="9" ry="5" fill="' + G2 + '"/><ellipse cx="' + (x + 9) + '" cy="' + (g - 26) + '" rx="9" ry="5" fill="' + G1 + '"/>';
@@ -388,7 +388,7 @@
     s = '<rect x="' + (x - tw / 2) + '" y="' + (g - th) + '" width="' + tw + '" height="' + th + '" rx="' + (tw / 3) + '" fill="' + T + '"/>';
     var blobs = big ? [[0, 0, R, G2], [-R * .7, R * .3, R * .7, G1], [R * .7, R * .3, R * .7, G1], [0, -R * .55, R * .7, G3]] : [[0, 0, R, G2]];
     s += blobs.map(function (b) { return '<circle cx="' + (x + b[0]).toFixed(1) + '" cy="' + (cy + b[1]).toFixed(1) + '" r="' + b[2].toFixed(1) + '" fill="' + b[3] + '"/>'; }).join('');
-    if (huge) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4], [-.7, .45], [.1, -.75]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="4" fill="#ef6b6b"/>'; }).join('');
+    if (huge) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4], [-.7, .45], [.1, -.75]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="4" fill="#f04452"/>'; }).join('');
     else if (big) s += [[-.45, -.1], [.35, -.45], [.55, .3], [-.15, .4]].map(function (p) { return '<circle cx="' + (x + p[0] * R) + '" cy="' + (cy + p[1] * R) + '" r="3" fill="#fff"/>'; }).join('');
     return s;
   }
@@ -399,7 +399,7 @@
       return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + col + '"/>';
     }).join('');
     $('garden').innerHTML = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' +
-      '<rect width="360" height="212" fill="#f5f7fb"/><rect y="176" width="360" height="36" fill="#e7f3ec"/><rect y="176" width="360" height="1.5" fill="#cfe6d8"/>' +
+      '<defs><linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8f3ff"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="360" height="212" fill="url(#pSky)"/><ellipse cx="180" cy="200" rx="240" ry="28" fill="#e3f7ec"/>' +
       plainTreeSVG(stage) + dots + '</svg>';
     $('sceneTag').textContent = 'Lv.' + L + ' ' + titleOf(L) + ' · 목표 달성 ' + fl.length + '회 (30일)';
     var done = quests.filter(function (q) { return q.done; }).length;
