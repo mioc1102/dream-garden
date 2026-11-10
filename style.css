@@ -1497,3 +1497,19 @@ html:not(.theme-plain) .rc-exp p, html:not(.theme-plain) .rc-ko { color: #4a4270
   .set-row small.muted { font-size: 12px; line-height: 1.45; display: inline-block; margin-top: 2px; }
 }
 @media (max-width: 360px) { .cat-opts { flex-wrap: wrap; } .cat-opts .icon-sel, .cat-list li .icon-sel { width: 76px !important; max-width: 76px; } }
+/* 기록 창 타이머: 버튼 글자 쪼개짐 방지 */
+.timer .btn { flex: none; white-space: nowrap; }
+.timer-face { min-width: 0; }
+@media (max-width: 600px) {
+  .timer { padding: 8px 8px 8px 12px; gap: 6px; }
+  #timerDisplay { font-size: 22px; letter-spacing: 0; }
+  .timer-face .ic { width: 18px; height: 18px; }
+  .timer .btn { padding-left: 12px; padding-right: 12px; }
+}
+@media (max-width: 360px) { #timerDisplay { font-size: 19px; } .timer-face .ic { display: none; } }
+@media (max-width: 600px) {
+  .bubble { white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+  #addDlg .card-h h2 { white-space: nowrap; }
+  #addDlg .card-h .row-tight { flex: none; }
+}
+@media (max-width: 360px) { #addDlg .date-mini { padding: 4px 6px; font-size: 12.5px; max-width: 132px; } }
