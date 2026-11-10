@@ -1457,3 +1457,43 @@ html:not(.theme-plain) .rc-exp p, html:not(.theme-plain) .rc-ko { color: #4a4270
   #statSummary .stat .s { grid-column: 1 / -1; }
 }
 @media (max-width: 600px) { .part-stats .lv-row { grid-template-columns: 52px minmax(0, 1fr) auto; } }
+
+/* ===================== 설정 휴대폰 정리 ===================== */
+@media (max-width: 600px) {
+  /* 테마: 4개를 한 줄에, 이름만 */
+  .theme-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .theme-opt { padding: 5px; border-radius: 14px; text-align: center; }
+  .theme-opt .pv { height: 38px; padding: 4px; gap: 3px; border-radius: 10px; margin-bottom: 4px; }
+  .theme-opt .pv i { height: 9px; border-radius: 4px; }
+  .theme-opt b { font-size: 12.5px; }
+  .theme-opt > span { display: none; }
+  /* 분야: 옵션 줄 한 줄로 */
+  .cat-list li { padding: 10px 0; row-gap: 8px; }
+  .cat-list li .ic-prev { width: 34px; height: 34px; }
+  .cat-opts { gap: 6px; flex-wrap: nowrap; }
+  .cat-opts .icon-sel, .cat-list li .icon-sel { width: 84px !important; max-width: 84px; flex: none; padding-left: 10px; padding-right: 22px; font-size: 13.5px; }
+  .cat-opts .goal-l { display: flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 12.5px; }
+  .cat-opts .goal-l input, .cat-list li .goal-l .field { width: 46px !important; padding: 7px 4px; text-align: center; }
+  .cat-opts input[type=color] { width: 28px; height: 28px; flex: none; }
+  .cat-opts .chk { display: flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 12.5px; }
+  .cat-opts .chk input { width: 18px; height: 18px; margin: 0; }
+  .cat-opts > span.small.muted { margin-left: auto; white-space: nowrap; font-size: 12px; }
+  /* 분야 추가: 이름 줄 + 옵션 줄 */
+  .cat-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .cat-add #catIconPrev { width: 34px; height: 34px; order: 0; }
+  .cat-add #catName { order: 1; flex: 1 1 calc(100% - 50px); min-width: 0; }
+  .cat-add #catIcon { order: 2; width: 84px !important; flex: none; padding-left: 10px; padding-right: 22px; font-size: 13.5px; }
+  .cat-add .goal-l { order: 3; display: flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 12.5px; }
+  .cat-add .goal-l input { width: 46px !important; padding: 7px 4px; text-align: center; }
+  .cat-add #catColor { order: 4; width: 28px; height: 28px; }
+  .cat-add button { order: 5; margin-left: auto; }
+  /* 설정 줄: 설명이 긴 줄은 버튼을 아래로 */
+  .set-row { flex-wrap: wrap; gap: 8px 12px; padding: 12px 0; }
+  .set-row > span:first-child { flex: 1 1 0; min-width: 0; }
+  .set-row .btn { white-space: nowrap; }
+  .set-row:has(> .btn) > span:first-child, .set-row:has(> .row) > span:first-child { flex-basis: 100%; }
+  .set-row > .row { gap: 6px; flex-wrap: wrap; }
+  .set-row input[type=time] { width: 124px !important; flex: none; padding: 8px 10px; font-size: 14px; }
+  .set-row small.muted { font-size: 12px; line-height: 1.45; display: inline-block; margin-top: 2px; }
+}
+@media (max-width: 360px) { .cat-opts { flex-wrap: wrap; } .cat-opts .icon-sel, .cat-list li .icon-sel { width: 76px !important; max-width: 76px; } }
