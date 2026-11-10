@@ -1124,7 +1124,6 @@
     if (tot) q.push({ ic: 'cards', color: '#9ee3d4', title: '오늘의 토익 단어 외우기', sub: p.learned.length + ' / ' + tot + '개', pct: p.learned.length / tot, done: p.learned.length >= tot, eng: 'study' });
     var best = bestScore(p);
     ['weekly', 'monthly'].forEach(function (k) { var e = examInfo(k); if (e.due || e.doneToday) q.push({ ic: k === 'weekly' ? 'moon' : 'star', color: '#d6c2ff', title: e.name, sub: e.doneToday ? '응시 완료' : '오늘 열렸어요', pct: e.doneToday ? 1 : 0, done: !!e.doneToday, exam: k }); });
-    q.unshift({ ic: 'check', color: '#ffd36e', title: '출석 체크', sub: attended(t) ? '출석 완료 · ' + attStreak() + '일 연속' : '눌러서 출석하기', pct: attended(t) ? 1 : 0, done: attended(t), att: true });
     q.push({ ic: 'pen', color: '#ffc3e4', title: '토익 단어 시험 보기', sub: best == null ? '아직 안 봤어요' : '최고 ' + best + '점', pct: best == null ? 0 : 1, done: best != null, eng: 'quiz' });
     return q;
   }
@@ -1207,7 +1206,7 @@
     var on = !!(timer.start || timer.acc);
     $('fabTimer').textContent = timer.start ? $('timerDisplay').textContent.replace(/^00:/, '') : '';
     $('fab').classList.toggle('running', !!timer.start);
-    $('homeAddSub').textContent = on ? '타이머 ' + (timer.start ? '진행 중 ' : '멈춤 ') + $('timerDisplay').textContent : '운동·공부·영어 시간을 바로 적어요';
+    $('homeAddSub').textContent = on ? '타이머 ' + (timer.start ? '진행 중 ' : '멈춤 ') + $('timerDisplay').textContent : '운동 · 공부 · 영어 시간';
   }
   function runTick() { clearInterval(tick); if (timer.start) tick = setInterval(drawTimer, 1000); drawTimer(); }
   function resetTimer() { timer = { start: null, acc: 0 }; saveTimer(); runTick(); }
@@ -1839,9 +1838,9 @@
       '<button class="course-pill" data-eng="course">' + ic('sliders') + esc(courseLabel()) + '</button></div>' +
       '<button class="ring-btn" data-eng="report" title="실력 리포트">' + scoreRing(score, 84) + '</button></div>' +
       '<div class="eng-steps">' +
-      '<div class="eng-step' + (studyDone ? ' done' : '') + '"><div class="h">I. 단어 외우기 ' + (studyDone ? ic('check') : '') + '</div><div class="v">' + learned + ' / ' + tot + '개</div></div>' +
-      '<div class="eng-step' + (best != null ? ' done' : '') + '"><div class="h">II. 오늘 시험 ' + (best != null ? ic('check') : '') + '</div><div class="v">' + (best == null ? '아직 안 봤어요' : '최고 ' + best + '점') + '</div></div>' +
-      (RC_ALL.length ? '<div class="eng-step' + (p.rc ? ' done' : '') + '"><div class="h">III. 실전 RC ' + (p.rc ? ic('check') : '') + '</div><div class="v">' + (p.rc ? p.rc + '세트 완료' : '아직 안 풀었어요') + '</div></div>' : '') +
+      '<div class="eng-step' + (studyDone ? ' done' : '') + '"><div class="h">단어 ' + (studyDone ? ic('check') : '') + '</div><div class="v">' + learned + ' / ' + tot + '개</div></div>' +
+      '<div class="eng-step' + (best != null ? ' done' : '') + '"><div class="h">시험 ' + (best != null ? ic('check') : '') + '</div><div class="v">' + (best == null ? '아직' : best + '점') + '</div></div>' +
+      (RC_ALL.length ? '<div class="eng-step' + (p.rc ? ' done' : '') + '"><div class="h">RC ' + (p.rc ? ic('check') : '') + '</div><div class="v">' + (p.rc ? p.rc + '세트' : '아직') + '</div></div>' : '') +
       '</div>' + engNowBtn(p, tot, studyDone, best, exams) + '</div>' +
       rcHomeCard() +
       // 정기고사
@@ -2398,13 +2397,13 @@
     $('catList').innerHTML = data.categories.map(function (c) {
       var n = data.entries.filter(function (e) { return e.categoryId === c.id; }).length;
       return '<li data-id="' + esc(c.id) + '"><span class="ic-prev" style="--c:' + esc(c.color) + '">' + ic(c.icon) + '</span>' +
-        '<select class="field icon-sel" data-f="icon">' + iconOptions(c.icon) + '</select>' +
         '<input type="text" class="field nm" data-f="name" maxlength="20" value="' + esc(c.name) + '">' +
+        '<button class="btn tiny glass icon-only cat-del" data-act="delcat" title="삭제" aria-label="분야 삭제" style="color:var(--bad)">' + ic('trash') + '</button>' +
+        '<div class="cat-opts"><select class="field icon-sel" data-f="icon" aria-label="아이콘">' + iconOptions(c.icon) + '</select>' +
         '<label class="small muted goal-l">목표 <input type="number" class="field" data-f="dailyGoalMin" min="0" max="1440" value="' + (c.dailyGoalMin || 0) + '">분</label>' +
         '<input type="color" data-f="color" value="' + esc(c.color) + '">' +
         '<label class="small muted chk"><input type="checkbox" data-f="parts"' + (c.parts ? ' checked' : '') + '>부위</label>' +
-        '<span class="small muted">' + n + '개</span>' +
-        '<button class="btn tiny glass icon-only" data-act="delcat" title="삭제" style="color:var(--bad)">' + ic('trash') + '</button></li>';
+        '<span class="small muted">' + n + '개</span></div></li>';
     }).join('');
     if (!$('catIcon').options.length) $('catIcon').innerHTML = iconOptions('book');
     updateIconPrev();
@@ -2498,7 +2497,8 @@
   function attCell(d, month) {
     var rd = routineDay(d), a = attended(d), t = today(), fut = d > t, dt = parseYmd(d);
     var cls = 'att-day' + (a ? ' on' : '') + (d === t ? ' today' : '') + (fut ? ' future' : '') + (rd.total && rd.done === rd.total && !fut ? ' allrt' : '') + (month ? ' m' : '');
-    var rt = rd.total && !fut ? '<span class="att-rt"><i style="width:' + (rd.done / rd.total * 100) + '%"></i></span><small>루틴 ' + rd.done + '/' + rd.total + '</small>' : '<small class="att-none">' + (fut ? '' : rd.total ? '' : '루틴 없음') + '</small>';
+    var rt = month ? (rd.total && !fut ? '<span class="att-rt"><i style="width:' + (rd.done / rd.total * 100) + '%"></i></span><small>' + rd.done + '/' + rd.total + '</small>' : '<small class="att-none"></small>')
+      : '<i class="att-dot' + (rd.total && !fut ? (rd.done === rd.total ? ' full' : rd.done ? ' half' : ' zero') : '') + '"></i>';
     var title = prettyDate(d) + (a ? ' · 출석' : fut ? '' : ' · 미출석') + (rd.total ? ' · 루틴 ' + rd.done + '/' + rd.total : '');
     return '<div class="' + cls + '" title="' + esc(title) + '">' + (month ? '<span class="att-num">' + dt.getDate() + '</span>' : '<span class="att-dow">' + DAYS[dt.getDay()] + '</span>') +
       '<span class="att-stamp">' + (a ? ic('check') : month ? '' : dt.getDate()) + '</span>' + rt + '</div>';
@@ -2508,11 +2508,11 @@
     for (i = 0; i < 7; i++) days.push(addDays(mon, i));
     var a = attended(t), st = attStreak(), rd = routineDay(t);
     var monthN = Object.keys(data.attendance).filter(function (k) { return k.slice(0, 7) === t.slice(0, 7); }).length;
-    $('attCard').innerHTML = '<div class="card-h"><h2>' + ic('calendar') + '출석 체크</h2><span class="chip-sm">' + (st ? st + '일 연속' : '연속 0일') + ' · 이번 달 ' + monthN + '일</span></div>' +
+    $('attCard').innerHTML = '<div class="att-head"><h2>' + ic('calendar') + '출석</h2><span class="att-streak">' + (st ? '<b>' + st + '일</b> 연속' : '오늘부터 시작') + '</span>' +
+      '<button type="button" class="att-more" data-att="month">이번 달 ' + monthN + '일' + ic('right') + '</button></div>' +
       '<div class="att-week">' + days.map(function (d) { return attCell(d); }).join('') + '</div>' +
-      '<div class="att-foot">' + (a ? '<span class="att-done">' + ic('check') + '오늘 출석 완료' + (rd.total ? ' · 루틴 ' + rd.done + '/' + rd.total + (rd.done === rd.total ? ' 모두 완수' : ' 진행 중') : '') + '</span>'
-        : '<button type="button" class="btn primary" data-att="in">' + ic('check') + '오늘 출석하기<small>+5 xp</small></button>') +
-      '<button type="button" class="btn small glass" data-att="month">이번 달 보기</button></div>';
+      (a ? '<p class="att-done">' + ic('check') + '오늘 출석 완료' + (rd.total ? '<span>루틴 ' + rd.done + '/' + rd.total + (rd.done === rd.total ? ' 모두 끝냄' : '') + '</span>' : '') + '</p>'
+        : '<button type="button" class="btn primary att-in" data-att="in">출석하기 <small>+5 xp</small></button>');
   }
   var attMonth = null;
   function renderAttMonth() {
@@ -2601,7 +2601,7 @@
   $('addClose').addEventListener('click', function () { $('addDlg').close(); });
   $('addDlg').addEventListener('click', function (ev) { if (ev.target === this) this.close(); });
   function syncFab() {
-    var v = currentView, show = v === 'home' || v === 'log' || v === 'calendar' || v === 'stats';
+    var v = currentView, show = v === 'log' || v === 'calendar' || v === 'stats';
     $('fab').hidden = !show;
   }
 
@@ -2661,7 +2661,7 @@
     var first = data.entries.reduce(function (m, e) { return !m || e.date < m ? e.date : m; }, null);
     if (first && daysBetween(first, today()) >= 7) {
       data.settings.backupHinted = true; save();
-      setTimeout(function () { toast('기록이 쌓였어요. 설정 → 백업에서 파일로 저장해 두세요 <button type="button" id="toastBackup">백업하기</button>', true); var b = $('toastBackup'); if (b) b.onclick = function () { go('settings'); }; }, 1500);
+      setTimeout(function () { toast('기록이 쌓였어요. 백업해 두세요 <button type="button" id="toastBackup">백업하기</button>', true); var b = $('toastBackup'); if (b) b.onclick = function () { go('settings'); }; }, 1500);
     }
   }
 
