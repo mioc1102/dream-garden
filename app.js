@@ -604,12 +604,13 @@
   var eng = { screen: 'home' };
   function go(view) {
     currentView = view;
-    document.querySelectorAll('.dock button').forEach(function (x) { x.classList.toggle('active', x.dataset.view === view); });
+    document.querySelectorAll('.dock button').forEach(function (x) { x.classList.toggle('active', x.dataset.view === view || (view === 'calendar' && x.dataset.view === 'log')); });
     document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + view); });
     window.scrollTo(0, 0);
     $('fx').innerHTML = '';
     render(); syncFab();
   }
+  document.addEventListener('click', function (ev) { var g = ev.target.closest('[data-go]'); if (g) { sfx('pop'); go(g.dataset.go); } });
   $('tabs').addEventListener('click', function (ev) {
     var b = ev.target.closest('button'); if (!b) return;
     sfx('pop');
@@ -1062,6 +1063,7 @@
       else if (q.cat) openAdd(q.cat);
     };
     renderGarden(quests);
+    var dw = new Date().getDay(); $('homeWeek').innerHTML = dw === 0 || dw === 1 ? weekReport() : '';
     renderRoutineToday();
     renderChips();
     if (!$('addDate').value) $('addDate').value = today();
@@ -1791,13 +1793,15 @@
   function wordRow(x, tag, ok) {
     if (!x) return '';
     var s = data.english.words[x.w];
-    var t = tag === 'new' ? '<span class="tag new">new</span>' : tag === 'rev' ? '<span class="tag rev">복습</span>'
-      : s && s.wrongNote ? '<span class="tag wrong">오답 ' + s.wrong + '</span>' : s && s.intro ? '<span class="tag ok">학습함</span>' : '';
-    return '<li class="wrow" data-w="' + esc(x.w) + '"><div class="wline"><span class="ww">' + esc(x.w) + '</span>' + lvDots(x.lv) +
-      '<span class="wm">' + esc(x.m) + ' <span class="tag">' + POS[x.p] + '</span></span>' + t + (ok ? '<span class="tag ok">✓</span>' : '') + starBtn(x.w) + spkBtn(x.w) + '</div>' +
-      '<div class="wex">' + (x.ex ? '<p class="ex-en">' + exHTML(x.ex) + '</p><p class="ex-ko">' + esc(x.exk) + '</p>' : '<p class="muted small">예문이 없어요</p>') +
-      '<p class="muted small">' + ic(dIcon(x.d)) + dName(x.d) + ' · ' + (LV_SHORT[x.lv] || '') + (x.d === 'my' ? ' · <button class="link danger" data-eng="delmy" data-w="' + esc(x.w) + '">삭제</button>' : '') + '</p></div></li>';
+    var t = ok ? '<span class="tag ok">✓</span>' : tag === 'new' ? '<span class="tag new">new</span>' : tag === 'rev' ? '<span class="tag rev">복습</span>'
+      : s && s.wrongNote ? '<span class="tag wrong">오답</span>' : s && s.intro ? '<span class="tag ok">학습</span>' : '';
+    return '<li class="wrow" data-w="' + esc(x.w) + '"><div class="wline"><span class="ww">' + esc(x.w) + (data.english.stars[x.w] ? ic('star', 'wstar') : '') + '</span>' +
+      '<span class="wm">' + esc(x.m) + '</span>' + t + spkBtn(x.w) + '</div>' +
+      '<div class="wex"><div class="wmeta">' + lvDots(x.lv) + '<span class="tag">' + POS[x.p] + '</span><span class="muted small">' + ic(dIcon(x.d)) + dName(x.d) + ' · ' + (LV_SHORT[x.lv] || '') + (s && s.wrong ? ' · 오답 ' + s.wrong + '회' : '') + '</span>' + starBtn(x.w) + '</div>' +
+      (x.ex ? '<p class="ex-en">' + exHTML(x.ex) + '</p><p class="ex-ko">' + esc(x.exk) + '</p>' : '<p class="muted small">예문이 없어요</p>') +
+      (x.d === 'my' ? '<p class="small"><button class="link danger" data-eng="delmy" data-w="' + esc(x.w) + '">내 단어에서 삭제</button></p>' : '') + '</div></li>';
   }
+
 
   // ---------- 코스 설정 ----------
   function renderCourse(root) {
@@ -2229,7 +2233,25 @@
   $('calCat').addEventListener('input', renderCalendar);
 
   // ================= 통계 =================
+  function weekReport() {
+    var t = today(), agg = aggregate(), cur = 0, prev = 0, rows = [], top = 1;
+    data.categories.forEach(function (c) {
+      var A = 0, B = 0, d = agg[c.id] || {}, i;
+      for (i = 0; i < 7; i++) { A += d[addDays(t, -i)] || 0; B += d[addDays(t, -7 - i)] || 0; }
+      cur += A; prev += B; top = Math.max(top, A, B); rows.push({ c: c, a: A, b: B });
+    });
+    if (!cur && !prev) return '';
+    var diff = cur - prev, best = rows.slice().sort(function (x, y) { return (y.a - y.b) - (x.a - x.b); })[0];
+    function sign(n) { return (n >= 0 ? '+' : '−') + fmtMin(Math.abs(n)); }
+    return '<div class="card week-card"><div class="card-h"><h2>' + ic('star') + '이번 주 회고</h2><span class="chip-sm">최근 7일 · 그 전 7일과 비교</span></div>' +
+      '<div class="wk-top"><div><small>최근 7일</small><b>' + fmtMin(cur) + '</b></div><div class="wk-diff ' + (diff >= 0 ? 'up' : 'down') + '"><b>' + sign(diff) + '</b><small>' + (prev ? (diff >= 0 ? '지난주보다 늘었어요' : '지난주보다 줄었어요') : '비교할 지난주 기록이 없어요') + '</small></div></div>' +
+      '<div class="wk-rows">' + rows.map(function (r) {
+        return '<div class="lv-row"><span>' + ic(r.c.icon) + ' ' + esc(r.c.name) + '</span><div class="bar"><i style="width:' + (r.a / top * 100) + '%;background:' + esc(r.c.color) + '"></i></div><span class="muted small">' + fmtMin(r.a) + (r.a || r.b ? ' (' + sign(r.a - r.b) + ')' : '') + '</span></div>';
+      }).join('') + '</div>' +
+      (best && best.a > best.b && prev ? '<p class="wk-best">' + ic('sparkle') + '가장 많이 늘어난 분야는 <b>' + esc(best.c.name) + '</b>예요.</p>' : '') + '</div>';
+  }
   function renderStats() {
+    $('weekCard').innerHTML = weekReport();
     var range = parseInt($('statRange').value, 10), t = today(), start = addDays(t, -(range - 1));
     var agg = aggregate(), cats = data.categories, keys = [], i;
     for (i = 0; i < range; i++) keys.push(addDays(start, i));

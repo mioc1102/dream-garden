@@ -38,6 +38,7 @@
 <main>
   <!-- 홈 -->
   <section id="view-home" class="view active">
+    <div class="home-grid"><div class="home-left">
     <div class="scene" id="scene">
       <div id="garden"></div>
       <div class="bubble" id="bubble">…</div>
@@ -45,6 +46,8 @@
     </div>
 
     <button type="button" class="home-add" id="homeAdd"><span class="ha-ic"><i data-ic="pen"></i></span><span class="ha-t"><b>기록 남기기</b><small id="homeAddSub">운동·공부·영어 시간을 바로 적어요</small></span><span class="ha-plus" aria-hidden="true">+</span></button>
+    </div><div class="home-right">
+    <div id="homeWeek"></div>
 
     <div class="card">
       <div class="card-h"><h2><i data-ic="sparkle"></i>오늘의 퀘스트</h2><span class="chip-sm" id="questCount"></span></div>
@@ -61,6 +64,7 @@
       <div class="card-h"><h2><i data-ic="moon"></i>오늘 한 일</h2><span class="chip-sm" id="todayTotal"></span></div>
       <ul id="todayList" class="entries"></ul>
     </div>
+    </div></div>
   </section>
 
   <!-- 영어 -->
@@ -68,6 +72,7 @@
 
   <!-- 기록 -->
   <section id="view-log" class="view">
+    <div class="seg log-seg"><button type="button" data-go="log" class="on">목록</button><button type="button" data-go="calendar">달력</button></div>
     <div class="card">
       <h2><i data-ic="notebook"></i>기록 모아보기</h2>
       <div class="filters">
@@ -83,6 +88,7 @@
 
   <!-- 달력 -->
   <section id="view-calendar" class="view">
+    <div class="seg log-seg"><button type="button" data-go="log">목록</button><button type="button" data-go="calendar" class="on">달력</button></div>
     <div class="card">
       <div class="cal-head">
         <button id="calPrev" class="btn tiny glass icon-only"><i data-ic="left"></i></button>
@@ -99,6 +105,7 @@
 
   <!-- 통계 -->
   <section id="view-stats" class="view">
+    <div id="weekCard"></div>
     <div class="card">
       <div class="card-h"><h2><i data-ic="chart"></i>성장 리포트</h2>
         <select id="statRange" class="field" style="width:auto">
@@ -195,7 +202,7 @@
   <button data-view="home" class="active"><i data-ic="door"></i><span>정원</span></button>
   <button data-view="english"><i data-ic="letters"></i><span>영어</span></button>
   <button data-view="log"><i data-ic="notebook"></i><span>기록</span></button>
-  <button data-view="calendar"><i data-ic="calendar"></i><span>달력</span></button>
+  <button data-view="calendar" hidden><i data-ic="calendar"></i><span>달력</span></button>
   <button data-view="stats"><i data-ic="chart"></i><span>통계</span></button>
   <button data-view="settings"><i data-ic="sliders"></i><span>설정</span></button>
 </nav>
