@@ -44,6 +44,8 @@
       <div class="scene-tag" id="sceneTag"></div>
     </div>
 
+    <button type="button" class="home-add" id="homeAdd"><span class="ha-ic"><i data-ic="pen"></i></span><span class="ha-t"><b>기록 남기기</b><small id="homeAddSub">운동·공부·영어 시간을 바로 적어요</small></span><span class="ha-plus" aria-hidden="true">+</span></button>
+
     <div class="card">
       <div class="card-h"><h2><i data-ic="sparkle"></i>오늘의 퀘스트</h2><span class="chip-sm" id="questCount"></span></div>
       <ul id="quests" class="quests"></ul>
@@ -54,32 +56,6 @@
       <ul id="routineToday" class="routines"></ul>
     </div>
 
-    <div class="card">
-      <div class="card-h"><h2><i data-ic="pen"></i>기록 남기기</h2><input type="date" id="addDate" class="date-mini"></div>
-      <form id="addForm">
-        <div class="cat-chips" id="catChips"></div>
-        <div id="partBox" class="part-box" hidden>
-          <div class="part-chips" id="partChips"></div>
-          <div class="preset-chips" id="presetChips"></div>
-          <p class="muted small part-hint" id="partHint"></p>
-        </div>
-        <div class="min-row">
-          <div class="min-input"><input type="number" id="addMin" min="1" max="1440" placeholder="0" required><span>분</span></div>
-          <div class="quick">
-            <button type="button" class="btn tiny glass" data-q="10">+10</button>
-            <button type="button" class="btn tiny glass" data-q="30">+30</button>
-            <button type="button" class="btn tiny glass" data-q="60">+60</button>
-          </div>
-        </div>
-        <input type="text" id="addNote" class="field" maxlength="200" placeholder="무엇을 했나요? (예: 스쿼트 5x5, 수학 문제집 3장)">
-        <div class="timer" id="timerBox">
-          <div class="timer-face"><i data-ic="hourglass" class="timer-ic"></i><span id="timerDisplay">00:00:00</span></div>
-          <button type="button" id="timerBtn" class="btn small sky">시작</button>
-          <button type="button" id="timerReset" class="btn small glass">초기화</button>
-        </div>
-        <button type="submit" class="btn primary block"><i data-ic="sparkle"></i>꿈에 기록하기</button>
-      </form>
-    </div>
 
     <div class="card">
       <div class="card-h"><h2><i data-ic="moon"></i>오늘 한 일</h2><span class="chip-sm" id="todayTotal"></span></div>
@@ -223,6 +199,42 @@
   <button data-view="stats"><i data-ic="chart"></i><span>통계</span></button>
   <button data-view="settings"><i data-ic="sliders"></i><span>설정</span></button>
 </nav>
+
+<button type="button" class="fab" id="fab" aria-label="기록 남기기"><i data-ic="pen"></i><span id="fabTimer"></span></button>
+
+<dialog id="addDlg" class="sheet-dlg" aria-label="기록 남기기">
+  <div class="card sheet-card" id="addCard">
+    <div class="card-h"><h2><i data-ic="pen"></i>기록 남기기</h2><div class="row-tight"><input type="date" id="addDate" class="date-mini"><button type="button" class="btn tiny glass icon-only" id="addClose" aria-label="닫기"><i data-ic="x"></i></button></div></div>
+    <form id="addForm">
+      <div class="cat-chips" id="catChips"></div>
+      <div id="partBox" class="part-box" hidden>
+        <div class="part-chips" id="partChips"></div>
+        <div class="preset-chips" id="presetChips"></div>
+        <p class="muted small part-hint" id="partHint"></p>
+      </div>
+      <div class="min-row">
+        <div class="min-input"><input type="number" id="addMin" min="1" max="1440" placeholder="0" required><span>분</span></div>
+        <div class="quick">
+          <button type="button" class="btn tiny glass" data-q="10">+10</button>
+          <button type="button" class="btn tiny glass" data-q="30">+30</button>
+          <button type="button" class="btn tiny glass" data-q="60">+60</button>
+        </div>
+      </div>
+      <input type="text" id="addNote" class="field" maxlength="200" placeholder="무엇을 했나요? (예: 스쿼트 5x5, 수학 문제집 3장)">
+      <div class="timer" id="timerBox">
+        <div class="timer-face"><i data-ic="hourglass" class="timer-ic"></i><span id="timerDisplay">00:00:00</span></div>
+        <button type="button" id="timerBtn" class="btn small sky">시작</button>
+        <button type="button" id="timerReset" class="btn small glass">초기화</button>
+      </div>
+      <button type="submit" class="btn primary block"><i data-ic="sparkle"></i>꿈에 기록하기</button>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="onbDlg" class="onb-dlg" aria-label="시작 안내">
+  <div id="onbBody"></div>
+  <div class="onb-foot"><button type="button" class="btn glass" id="onbBack">이전</button><button type="button" class="btn primary" id="onbNext">다음</button></div>
+</dialog>
 
 <dialog id="editDlg">
   <form method="dialog" class="dlg-form">

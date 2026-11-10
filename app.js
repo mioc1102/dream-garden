@@ -125,6 +125,7 @@
     d.english.exams = d.english.exams || [];
     d.english.custom = d.english.custom || [];
     d.english.lessons = d.english.lessons || {};
+    if (d.settings && d.settings.onboarded == null) d.settings.onboarded = !!((d.entries && d.entries.length) || Object.keys(d.english.words).length);
     d.english.rc = d.english.rc || {};
     d.english.rc.sets = d.english.rc.sets || {}; d.english.rc.qs = d.english.rc.qs || {}; d.english.rc.log = d.english.rc.log || [];
     d.routines = d.routines || [];
@@ -280,7 +281,7 @@
     t.style.pointerEvents = html ? 'auto' : 'none';
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); t.style.pointerEvents = 'none'; }, html ? 4000 : 2000);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); t.style.pointerEvents = 'none'; }, html ? 5000 : 2600);
   }
   function renderSparkles() {
     var L = $('sparkles');
@@ -606,7 +607,8 @@
     document.querySelectorAll('.dock button').forEach(function (x) { x.classList.toggle('active', x.dataset.view === view); });
     document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + view); });
     window.scrollTo(0, 0);
-    render();
+    $('fx').innerHTML = '';
+    render(); syncFab();
   }
   $('tabs').addEventListener('click', function (ev) {
     var b = ev.target.closest('button'); if (!b) return;
@@ -1057,7 +1059,7 @@
       if (q.eng === 'study') { eng.screen = 'home'; go('english'); startStudy(); }
       else if (q.eng === 'quiz') { eng.screen = 'home'; go('english'); startQuiz('today', 'mix'); }
       else if (q.exam) { eng.screen = 'home'; go('english'); if (!q.done) startQuiz(q.exam, 'mix'); }
-      else if (q.cat) { selCat = q.cat; renderChips(); $('addMin').focus(); $('addForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      else if (q.cat) openAdd(q.cat);
     };
     renderGarden(quests);
     renderRoutineToday();
@@ -1091,6 +1093,7 @@
     if (cat(selCat) && cat(selCat).parts && selParts.length) en.parts = selParts.slice();
     data.entries.push(en); selParts = [];
     save();
+    if ($('addDlg').open) $('addDlg').close();
     $('addMin').value = ''; $('addNote').value = '';
     resetTimer();
     var sb = ev.submitter, r = sb && sb.getBoundingClientRect();
@@ -1112,6 +1115,10 @@
     var label = timer.start ? 'pause|정지' : 'play|' + (timer.acc ? '이어서' : '시작');
     if ($('timerBtn').dataset.l !== label) { $('timerBtn').dataset.l = label; var p = label.split('|'); $('timerBtn').innerHTML = ic(p[0]) + p[1]; }
     $('timerBox').classList.toggle('running', !!timer.start);
+    var on = !!(timer.start || timer.acc);
+    $('fabTimer').textContent = timer.start ? $('timerDisplay').textContent.replace(/^00:/, '') : '';
+    $('fab').classList.toggle('running', !!timer.start);
+    $('homeAddSub').textContent = on ? '타이머 ' + (timer.start ? '진행 중 ' : '멈춤 ') + $('timerDisplay').textContent : '운동·공부·영어 시간을 바로 적어요';
   }
   function runTick() { clearInterval(tick); if (timer.start) tick = setInterval(drawTimer, 1000); drawTimer(); }
   function resetTimer() { timer = { start: null, acc: 0 }; saveTimer(); runTick(); }
@@ -1515,6 +1522,11 @@
     }
     root.innerHTML = head + tag + '<div class="rc-wrap"><div class="rc-passage">' + passage + '</div>' + panel + '</div>';
   }
+  function rcFocusBlank() {
+    var box = document.querySelector('.rc-passage'), cb = document.querySelector('.rc-blank.cur');
+    if (!box || box.scrollHeight <= box.clientHeight + 4) return;
+    if (cb) box.scrollTop = Math.max(0, cb.offsetTop - box.clientHeight * .35);
+  }
   function rcAnswer(i) {
     var r = eng.rc, set = RCMAP[r.ids[r.si]], q = set.q[r.qi], key = set.id + '#' + r.qi;
     if (r.picked[key] != null || r.setDone) return;
@@ -1540,7 +1552,8 @@
       var p = getPlan(today()); p.rc = (p.rc || 0) + 1;
       save(); sfx('save'); renderEnglish();
     }
-    var el = $('rcQ'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (window.innerWidth < 900) window.scrollTo({ top: 0, behavior: 'smooth' });
+    else { var el = $('rcQ'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
   }
   function rcNextSet() {
     var r = eng.rc; r.si++;
@@ -1714,6 +1727,8 @@
     var root = $('engRoot');
     var f = { study: renderStudy, quiz: renderQuiz, result: renderResult, book: renderBook, studyDone: renderStudyDone, course: renderCourse, report: renderReport, rc: renderRC, rcResult: renderRCResult, rcHub: renderRCHub, lessons: renderLessons, lesson: renderLesson }[eng.screen];
     (f || renderEngHome)(root);
+    var pf = $('practiceFold'); if (pf) pf.addEventListener('toggle', function () { engFold.practice = pf.open; });
+    if (eng.screen === 'rc') rcFocusBlank();
   }
   function renderEngHome(root) {
     var t = today(), p = getPlan(t), st = data.english.words;
@@ -1736,7 +1751,7 @@
       '<div class="eng-step' + (studyDone ? ' done' : '') + '"><div class="h">I. 단어 외우기 ' + (studyDone ? ic('check') : '') + '</div><div class="v">' + learned + ' / ' + tot + '개</div></div>' +
       '<div class="eng-step' + (best != null ? ' done' : '') + '"><div class="h">II. 오늘 시험 ' + (best != null ? ic('check') : '') + '</div><div class="v">' + (best == null ? '아직 안 봤어요' : '최고 ' + best + '점') + '</div></div>' +
       (RC_ALL.length ? '<div class="eng-step' + (p.rc ? ' done' : '') + '"><div class="h">III. 실전 RC ' + (p.rc ? ic('check') : '') + '</div><div class="v">' + (p.rc ? p.rc + '세트 완료' : '아직 안 풀었어요') + '</div></div>' : '') +
-      '</div></div>' +
+      '</div>' + engNowBtn(p, tot, studyDone, best, exams) + '</div>' +
       rcHomeCard() +
       // 정기고사
       '<div class="card exam-card"><div class="card-h"><h2>' + ic('calendar') + '정기고사</h2>' +
@@ -1748,6 +1763,7 @@
         return '<div class="exam-row' + (e.due ? ' due' : '') + '"><div class="exam-ic">' + ic(e.type === 'weekly' ? 'moon' : 'star') + '</div><div class="q-body"><div class="q-title">' + e.name + ' <span class="muted small">' + EXAMS[e.type].n + '문항 · 혼합' + (RC_ALL.length ? ' + RC' : '') + '</span></div><div class="q-sub">' + sub + '</div></div>' +
           '<button class="btn tiny ' + (e.due ? 'primary' : 'glass') + '" data-eng="exam" data-t="' + e.type + '"' + (e.locked ? ' disabled' : '') + '>' + (e.due ? '응시' : '미리 보기') + '</button></div>';
       }).join('') + '</div>' +
+      '<details class="card fold" id="practiceFold"' + (engFold.practice ? ' open' : '') + '><summary><h2>' + ic('dice') + '연습 모드</h2><span class="muted small">카드 · 4지선다 · 빈칸 · 듣기 · 스펠링 · 오답 · 약점</span>' + ic('right', 'fold-ar') + '</summary>' +
       '<div class="eng-actions">' +
       '<button class="btn sky wide" data-eng="study"' + (tot ? '' : ' disabled') + '>' + ic('cards') + '<span class="txt">오늘 단어 공부하기<span class="sub">새 단어 ' + p.fresh.length + ' · 복습 ' + p.review.length + '</span></span></button>' +
       '<button class="btn pink" data-eng="quiz" data-src="today" data-mode="choice"' + (tot ? '' : ' disabled') + '>' + ic('pen') + '4지선다<span class="sub">뜻 ↔ 단어</span></button>' +
@@ -1756,10 +1772,21 @@
       '<button class="btn butter" data-eng="quiz" data-src="today" data-mode="spell"' + (tot ? '' : ' disabled') + '>' + ic('type') + '스펠링<span class="sub">뜻 보고 영어로 쓰기</span></button>' +
       '<button class="btn glass" data-eng="quiz" data-src="wrong" data-mode="mix"' + (wrongN ? '' : ' disabled') + '>' + ic('rewind') + '오답노트<span class="sub">' + (wrongN ? wrongN + '개 다시 도전' : '틀린 단어 없음') + '</span></button>' +
       '<button class="btn glass" data-eng="quiz" data-src="weak" data-mode="mix"' + (weak && (weak.att || introduced) ? '' : ' disabled') + '>' + ic('flame') + '약점 집중<span class="sub">' + (weak ? dName(weak.d) : '-') + '</span></button>' +
-      '</div>' +
+      '</div></details>' +
       '<div class="card"><div class="card-h"><h2>' + ic('sparkle') + '오늘의 단어</h2><button class="btn tiny glass" data-eng="book">' + ic('book') + '단어장</button></div>' +
-      (rows.length ? '<ul class="word-list">' + rows.map(function (r) { return wordRow(WMAP[r[0]], r[1], p.learned.indexOf(r[0]) >= 0); }).join('') + '</ul>' : '<p class="muted center">이 코스의 단어를 모두 받았어요 ✧ 코스를 바꾸거나 복습 시험을 봐요.</p>') +
+      (rows.length ? '<ul class="word-list">' + rows.slice(0, engFold.words ? rows.length : 5).map(function (r) { return wordRow(WMAP[r[0]], r[1], p.learned.indexOf(r[0]) >= 0); }).join('') + '</ul>' + (rows.length > 5 ? '<button class="btn small glass block" data-eng="wordsall" style="font-size:14px">' + (engFold.words ? '접기' : '오늘의 단어 ' + rows.length + '개 모두 보기') + '</button>' : '') : '<p class="muted center">이 코스의 단어를 모두 받았어요 ✧ 코스를 바꾸거나 복습 시험을 봐요.</p>') +
       '<button class="btn small glass block" data-eng="more" style="font-size:14px">' + ic('gift') + '새 단어 +10개 더 받기</button></div>';
+  }
+  var engFold = { practice: false, words: false };
+  function engNowBtn(p, tot, studyDone, best, exams) {
+    var due = exams.filter(function (e) { return e.due && !e.doneToday; })[0], nx = typeof nextLesson === 'function' ? nextLesson() : null, a;
+    if (tot && !studyDone) a = ['study', '', 'cards', '오늘 단어 외우기', p.learned.length + ' / ' + tot + '개 · 카드 넘기며 외워요'];
+    else if (tot && best == null) a = ['quiz', ' data-src="today" data-mode="mix"', 'pen', '오늘 단어 시험 보기', '방금 외운 단어를 확인해요'];
+    else if (due) a = ['exam', ' data-t="' + due.type + '"', due.type === 'weekly' ? 'moon' : 'star', due.name + ' 응시', EXAMS[due.type].n + '문항이 열렸어요'];
+    else if (RC_ALL.length && !p.rc) a = ['rcrec', '', 'doc', '실전 RC 2세트 풀기', 'Part 6 + Part 7 추천 세트'];
+    else if (nx) a = ['lesson', ' data-id="' + nx.id + '"', 'lecture', '강의 듣기 · ' + nx.title, nx.min + '분'];
+    else a = ['more', '', 'gift', '오늘 할 일을 다 했어요', '새 단어 +10개 더 받기'];
+    return '<button class="btn primary block now-btn" data-eng="' + a[0] + '"' + a[1] + '>' + ic(a[2]) + '<span class="txt"><small>지금 할 것</small>' + esc(a[3]) + '<span class="sub">' + esc(a[4]) + '</span></span>' + ic('right', 'now-ar') + '</button>';
   }
   function wordRow(x, tag, ok) {
     if (!x) return '';
@@ -2089,6 +2116,7 @@
     if (b.disabled) return;
     var a = b.dataset.eng, c = data.settings.course;
     if (rcAction(a, b)) return;
+    if (a === 'wordsall') { engFold.words = !engFold.words; return renderEnglish(); }
     if (a === 'speak') { ev.stopPropagation(); speak(b.dataset.w); return; }
     if (a === 'star') { ev.stopPropagation(); var w0 = b.dataset.w; if (data.english.stars[w0]) delete data.english.stars[w0]; else data.english.stars[w0] = 1; save(); sfx('pop'); b.classList.toggle('on', !!data.english.stars[w0]); return; }
     if (a === 'flip') { eng.study.flipped = !eng.study.flipped; $('flash').classList.remove('in'); $('flash').classList.toggle('flip', eng.study.flipped); sfx('flip'); return; }
@@ -2244,7 +2272,7 @@
     W.forEach(function (x) { var s = data.english.words[x.w]; if (s && s.wrongNote) wrongN++; });
     var exN = (data.english.exams || []).length;
     $('statEng').innerHTML =
-      '<div class="stat" style="--c:#d6c2ff"><div class="name">' + ic('chart') + '예상 점수</div><div class="big">' + (sc == null ? '—' : sc) + '<small class="muted" style="font-size:15px"> / 990</small></div><div class="s">단어 실력 기준 추정치</div></div>' +
+      '<div class="stat" style="--c:#d6c2ff"><div class="name">' + ic('chart') + '예상 점수</div><div class="big">' + (sc == null ? '—' : sc) + '<small class="muted" style="font-size:15px"> / 990</small></div><div class="s">단어·RC 실력 기준 추정치</div></div>' +
       '<div class="stat" style="--c:#9ee3d4"><div class="name">' + ic('cards') + '학습한 단어</div><div class="big">' + introN + '<small class="muted" style="font-size:15px"> / ' + W.length + '</small></div><div class="s">기초 ' + ls[1].k + ' · 중급 ' + ls[2].k + ' · 고급 ' + ls[3].k + ' 숙련</div></div>' +
       '<div class="stat" style="--c:#ffb3d1"><div class="name">' + ic('rewind') + '오답노트</div><div class="big">' + wrongN + '</div><div class="s">연속 2번 맞히면 졸업</div></div>' +
       '<div class="stat" style="--c:#a9dcff"><div class="name">' + ic('calendar') + '정기고사</div><div class="big">' + exN + '회</div><div class="s">주간 D-' + examInfo('weekly').dueIn + ' · 월간 D-' + examInfo('monthly').dueIn + '</div></div>';
@@ -2341,6 +2369,82 @@
   });
 
   // ================= 렌더 =================
+  // ================= 빠른 기록 시트 · 첫 실행 안내 =================
+  function openAdd(catId) {
+    if (catId) selCat = catId;
+    renderChips();
+    var d = $('addDlg'); if (!d.open) d.showModal();
+    setTimeout(function () { $('addMin').focus(); }, 60);
+  }
+  $('homeAdd').addEventListener('click', function () { sfx('pop'); openAdd(); });
+  $('fab').addEventListener('click', function () { sfx('pop'); openAdd(); });
+  $('addClose').addEventListener('click', function () { $('addDlg').close(); });
+  $('addDlg').addEventListener('click', function (ev) { if (ev.target === this) this.close(); });
+  function syncFab() {
+    var v = currentView, show = v === 'home' || v === 'log' || v === 'calendar' || v === 'stats';
+    $('fab').hidden = !show;
+  }
+
+  var onb = { step: 0 };
+  function renderOnb() {
+    var s = onb.step, body;
+    var dots = '<div class="onb-dots">' + [0, 1, 2].map(function (i) { return '<i class="' + (i === s ? 'on' : i < s ? 'done' : '') + '"></i>'; }).join('') + '</div>';
+    if (s === 0) {
+      body = '<div class="onb-art">' + ic('tree') + '</div><h2>꿈속 정원에 온 걸 환영해요</h2>' +
+        '<p class="muted">운동·공부·영어 시간을 기록하면 경험치가 쌓이고, 정원의 씨앗이 나무로 자라요. 하루 목표를 채우면 정원에 꽃이 하나씩 피어요.</p>' +
+        '<p class="onb-label">화면 분위기</p><div class="onb-themes">' + [['dream', '드림코어'], ['plain', '일반'], ['dark', '다크']].map(function (t) {
+          return '<button type="button" class="onb-opt' + ((data.settings.theme || 'dream') === t[0] ? ' on' : '') + '" data-onbtheme="' + t[0] + '"><span class="pv ' + t[0] + '"></span>' + t[1] + '</button>';
+        }).join('') + '</div>';
+    } else if (s === 1) {
+      body = '<h2>하루 목표를 정해요</h2><p class="muted">목표를 채운 날엔 정원에 꽃이 피어요. 나중에 설정에서 바꿀 수 있어요.</p><div class="onb-goals">' +
+        data.categories.map(function (c) {
+          return '<label class="onb-goal" style="--c:' + esc(c.color) + '"><span class="q-ic">' + ic(c.icon || 'sparkle') + '</span><b>' + esc(c.name) + '</b>' +
+            '<span class="onb-num"><button type="button" data-step="-10" data-c="' + c.id + '" aria-label="10분 줄이기">−</button><input type="number" min="0" max="600" step="5" value="' + (c.dailyGoalMin || 0) + '" data-goal="' + c.id + '" id="onbGoal-' + c.id + '"><button type="button" data-step="10" data-c="' + c.id + '" aria-label="10분 늘리기">+</button></span><small>분</small></label>';
+        }).join('') + '</div>';
+    } else {
+      body = '<h2>영어는 어디서부터 할까요?</h2><p class="muted">5분짜리 진단(30문항)을 보면 내 수준에 맞는 단어와 실전 문제부터 나와요.</p>' +
+        '<div class="onb-choices"><button type="button" class="onb-big" data-onbend="diag">' + ic('eye') + '<span><b>실력 진단 받기</b><small>30문항 · 약 5분</small></span></button>' +
+        '<button type="button" class="onb-big" data-onbend="home">' + ic('sparkle') + '<span><b>기초부터 바로 시작</b><small>정원으로 가서 첫 기록 남기기</small></span></button></div>' +
+        '<p class="onb-note">' + ic('download') + '<span>기록은 이 기기의 브라우저에만 저장돼요. 기기를 바꾸거나 방문 기록을 지우기 전에 <b>설정 → 백업</b>에서 파일로 저장해 두세요.</span></p>';
+    }
+    $('onbBody').innerHTML = dots + body;
+    $('onbBack').hidden = s === 0;
+    $('onbNext').hidden = s === 2;
+    hydrateIcons();
+  }
+  function finishOnb(to) {
+    data.settings.onboarded = true; save();
+    if ($('onbDlg').open) $('onbDlg').close();
+    if (to === 'diag') { go('english'); startQuiz('diag', 'choice'); }
+    else { go('home'); toast('정원에 첫 기록을 남겨 볼까요? 아래 + 버튼을 눌러요'); }
+  }
+  $('onbBody').addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-onbtheme]');
+    if (t) { data.settings.theme = t.dataset.onbtheme; save(); applyTheme(); render(); sfx('pop'); return renderOnb(); }
+    var st = ev.target.closest('[data-step]');
+    if (st) { var inp = $('onbGoal-' + st.dataset.c); inp.value = Math.max(0, Math.min(600, (parseInt(inp.value, 10) || 0) + +st.dataset.step)); inp.dispatchEvent(new Event('change', { bubbles: true })); return; }
+    var e = ev.target.closest('[data-onbend]'); if (e) finishOnb(e.dataset.onbend);
+  });
+  $('onbBody').addEventListener('change', function (ev) {
+    var id = ev.target.dataset && ev.target.dataset.goal; if (!id) return;
+    var c = cat(id); if (c) { c.dailyGoalMin = Math.max(0, parseInt(ev.target.value, 10) || 0); save(); }
+  });
+  $('onbNext').addEventListener('click', function () { onb.step = Math.min(2, onb.step + 1); sfx('pop'); renderOnb(); });
+  $('onbBack').addEventListener('click', function () { onb.step = Math.max(0, onb.step - 1); renderOnb(); });
+  $('onbDlg').addEventListener('close', function () { if (!data.settings.onboarded) { data.settings.onboarded = true; save(); render(); } });
+  function maybeOnboard() {
+    if (data.settings.onboarded) return;
+    onb.step = 0; renderOnb(); $('onbDlg').showModal();
+  }
+  function maybeBackupHint() { // 첫 기록 후 7일이 지나면 백업을 한 번 안내
+    if (data.settings.backupHinted || !data.entries.length) return;
+    var first = data.entries.reduce(function (m, e) { return !m || e.date < m ? e.date : m; }, null);
+    if (first && daysBetween(first, today()) >= 7) {
+      data.settings.backupHinted = true; save();
+      setTimeout(function () { toast('기록이 쌓였어요. 설정 → 백업에서 파일로 저장해 두세요 <button type="button" id="toastBackup">백업하기</button>', true); var b = $('toastBackup'); if (b) b.onclick = function () { go('settings'); }; }, 1500);
+    }
+  }
+
   function render() {
     renderHud();
     if (currentView === 'home') renderHome();
@@ -2364,7 +2468,7 @@
   runTick();
   renderSparkles();
   render();
-  checkReminders();
+  checkReminders(); syncFab(); maybeOnboard(); maybeBackupHint();
   checkHashImport();
   // 생성 이미지가 있으면 정원 배경으로 사용
   (function () { var im = new Image(); im.onload = function () { hasFieldImg = true; applyTheme(); if (currentView === 'home') renderGarden(getQuests()); }; im.src = 'assets/dream-field.png'; })();
