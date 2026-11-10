@@ -1204,3 +1204,32 @@ html:not(.theme-plain) .rc-exp p, html:not(.theme-plain) .rc-ko { color: #4a4270
   .fab, .theme-plain .fab { bottom: 32px; right: max(24px, calc(50% - 530px)); }
   #view-stats .stats-grid, #statSummary { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 }
+
+/* ===================== 디자인 레퍼런스 적용 ===================== */
+/* 오늘 링 (Apple 활동 링) */
+#questCount { display: inline-flex; align-items: center; gap: 6px; padding-left: 4px; }
+.rings { width: 26px; height: 26px; flex: none; }
+.rings circle:nth-child(even) { transition: stroke-dasharray .8s cubic-bezier(.3,1.2,.5,1); }
+/* 말풍선·완료 도장을 더 둥글고 두툼하게 (동물의 숲) */
+.bubble { border-radius: 22px; padding: 9px 15px; font-weight: 700; font-size: 13.5px; box-shadow: 0 6px 0 rgba(170,140,255,.18), 0 10px 24px rgba(170,140,255,.3); }
+.theme-plain .bubble { box-shadow: 0 4px 0 rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.08); }
+.quest .q-stamp { width: 30px; height: 30px; }
+/* 숫자는 고정폭 (Pretendard tabular) */
+.stat .big, #timerDisplay, .score, .wk-top b, .rc-stats b, .xp-txt, #xpTxt, .eng-step .v, .chip-sm, .cal-cell { font-variant-numeric: tabular-nums; }
+/* 정원 소품 등장 */
+.prop { animation: grow .7s cubic-bezier(.3,1.6,.5,1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+/* 지금 할 것 버튼에 큰 장식 원 (Speak) */
+.now-btn { position: relative; overflow: hidden; }
+.now-btn::after { content: ''; position: absolute; right: -28px; top: -34px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
+.now-btn::before { content: ''; position: absolute; right: 46px; bottom: -40px; width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,.1); pointer-events: none; }
+/* 다크: 카드 층위와 윗변 하이라이트 (Linear) */
+.theme-dark .card, .theme-dark .home-add, .theme-dark .rc-doc { box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(255,255,255,.03); }
+.theme-dark .card .card { background: #24242c; }
+.theme-dark .rings circle:nth-child(odd) { stroke-opacity: .3; }
+/* 데스크톱 세로 탭 그라데이션 (Arc) */
+@media (min-width: 1000px) {
+  html:not(.theme-plain) .dock { background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,214,236,.55) 55%, rgba(214,194,255,.6)); }
+  html.theme-plain:not(.theme-dark) .dock { background: linear-gradient(180deg, #ffffff, #f2f6ff); }
+  .theme-dark .dock { background: linear-gradient(180deg, #1e1e26, #18202f); }
+}
+@media (prefers-reduced-motion: reduce) { .prop, .rings circle { animation: none; transition: none; } }

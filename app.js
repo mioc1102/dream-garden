@@ -497,8 +497,51 @@
       '<g filter="url(#glow)"><circle cx="-12" cy="-4" r="11" fill="#fff"/><circle cx="12" cy="-4" r="11" fill="#fff"/><circle cx="0" cy="-12" r="14" fill="#fff"/><rect x="-22" y="-6" width="44" height="12" rx="6" fill="#fff"/></g>' +
       '<g transform="translate(0,-5)">' + eyes +
       '<ellipse cx="-12" cy="3.5" rx="3.4" ry="2" fill="#ffc3e4"/><ellipse cx="12" cy="3.5" rx="3.4" ry="2" fill="#ffc3e4"/>' + mouth + '</g>' +
-      (mood === 'sleep' ? '<text x="18" y="-26" font-size="10" fill="#fff" font-family="serif" font-style="italic">z z</text>' : '') +
+      (mood === 'sleep' ? '<text x="18" y="-26" font-size="10" fill="#fff" font-family="serif" font-style="italic">z z</text>' : '') + momoSeason() +
       '</g></g>';
+  }
+  // ===== 정원 장면 보강: 시간대 빛, 밤 실루엣, 퀘스트 소품, 계절 소품, 오늘 링 =====
+  function sunPos(h) { var t = Math.max(0, Math.min(1, (h - 5) / 15)); return [30 + t * 300, 96 - Math.sin(t * Math.PI) * 82]; }
+  function lightOverlay(h, sky) {
+    if (sky.night) return '<defs><radialGradient id="lgMoon"><stop offset="0" stop-color="#d6ddff" stop-opacity=".5"/><stop offset="1" stop-color="#d6ddff" stop-opacity="0"/></radialGradient></defs><circle cx="300" cy="42" r="96" fill="url(#lgMoon)"/>';
+    var p = sunPos(h), warm = sky.name !== 'day';
+    return '<defs><radialGradient id="lgSun"><stop offset="0" stop-color="' + (warm ? '#ffd29a' : '#fff6d6') + '" stop-opacity="' + (warm ? .72 : .5) + '"/><stop offset=".45" stop-color="' + (warm ? '#ffb48a' : '#fff1c8') + '" stop-opacity="' + (warm ? .3 : .16) + '"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>' +
+      '<circle cx="' + p[0].toFixed(0) + '" cy="' + p[1].toFixed(0) + '" r="180" fill="url(#lgSun)" style="mix-blend-mode:screen"/>';
+  }
+  // 오늘 끝낸 퀘스트 수만큼 정원에 소품이 하나씩 놓여요
+  var PROPS = [
+    function (x, y, P) { return '<rect x="' + (x - 1) + '" y="' + (y - 22) + '" width="2" height="22" rx="1" fill="' + P.post + '"/><rect x="' + (x - 5) + '" y="' + (y - 30) + '" width="10" height="9" rx="2.5" fill="' + P.lamp + '"/><circle cx="' + x + '" cy="' + (y - 25.5) + '" r="10" fill="' + P.lamp + '" opacity=".28" class="twinkle"/><path d="M' + (x - 6) + ' ' + (y - 30) + ' h12 l-2 -3 h-8z" fill="' + P.post + '"/>'; },
+    function (x, y) { return '<rect x="' + (x - 2.5) + '" y="' + (y - 8) + '" width="5" height="8" rx="2" fill="#fff4e6"/><path d="M' + (x - 9) + ' ' + (y - 7) + ' Q' + x + ' ' + (y - 20) + ' ' + (x + 9) + ' ' + (y - 7) + 'Z" fill="#f0606e"/><circle cx="' + (x - 3.5) + '" cy="' + (y - 11) + '" r="1.6" fill="#fff"/><circle cx="' + (x + 3) + '" cy="' + (y - 13) + '" r="1.3" fill="#fff"/>'; },
+    function (x, y, P) { return '<rect x="' + (x - 1) + '" y="' + (y - 20) + '" width="2" height="20" fill="' + P.post + '"/><path d="M' + (x - 8) + ' ' + (y - 20) + ' L' + x + ' ' + (y - 28) + ' L' + (x + 8) + ' ' + (y - 20) + 'Z" fill="' + P.roof + '"/><rect x="' + (x - 6) + '" y="' + (y - 20) + '" width="12" height="10" rx="1" fill="' + P.house + '"/><circle cx="' + x + '" cy="' + (y - 15) + '" r="2" fill="' + P.post + '"/>'; },
+    function (x, y) { return '<path d="M' + (x - 6) + ' ' + (y - 9) + ' h12 l-2 9 h-8z" fill="#d98d5f"/><rect x="' + (x - 7) + '" y="' + (y - 11) + '" width="14" height="3" rx="1.5" fill="#c47a4f"/><circle cx="' + (x - 3) + '" cy="' + (y - 15) + '" r="3" fill="#ffd36e"/><circle cx="' + (x + 3) + '" cy="' + (y - 16) + '" r="3" fill="#ff9fbf"/><circle cx="' + x + '" cy="' + (y - 19) + '" r="3" fill="#a7d8ff"/>'; },
+    function (x, y, P) { return '<ellipse cx="' + x + '" cy="' + (y - 3) + '" rx="9" ry="4" fill="' + P.stone + '"/><ellipse cx="' + (x + 1) + '" cy="' + (y - 9) + '" rx="6.5" ry="3.4" fill="' + P.stone2 + '"/><ellipse cx="' + x + '" cy="' + (y - 14) + '" rx="4" ry="2.4" fill="' + P.stone + '"/>'; }
+  ];
+  function questProps(n, ground, dark) {
+    var P = dark ? { post: '#5b4a3c', lamp: '#ffd36e', roof: '#c25b5b', house: '#a07a5c', stone: '#4a5560', stone2: '#5d6a75' } : { post: '#8b6b52', lamp: '#ffcf5c', roof: '#f07070', house: '#e9c9a5', stone: '#c9ccd3', stone2: '#dde0e6' };
+    var X = [84, 316, 118, 344, 146];
+    var s = '';
+    for (var i = 0; i < Math.min(n, PROPS.length); i++) s += '<g class="prop">' + PROPS[i](X[i], ground + (i % 2 ? 2 : 0), P) + '</g>';
+    return s;
+  }
+  // 구름 요정의 계절 소품
+  function momoSeason() {
+    var m = new Date().getMonth() + 1;
+    if (m >= 3 && m <= 5) return '<g transform="translate(0,-25)">' + [-8, -3, 2, 7].map(function (x, i) { return '<circle cx="' + x + '" cy="' + (i % 2 ? -1 : 0) + '" r="2.6" fill="' + ['#ffb3d1', '#fff1b5', '#c9b6f5', '#ffb3d1'][i] + '"/><circle cx="' + x + '" cy="' + (i % 2 ? -1 : 0) + '" r=".9" fill="#fff"/>'; }).join('') + '</g>';
+    if (m >= 6 && m <= 8) return '<g transform="translate(2,-24)"><ellipse cx="0" cy="2" rx="13" ry="3" fill="#f2d48a"/><path d="M-7 2 Q-6 -7 0 -7 Q6 -7 7 2Z" fill="#f6dd9a"/><rect x="-7" y="-1" width="14" height="2.4" fill="#ff8fab"/></g>';
+    if (m >= 9 && m <= 11) return '<g transform="translate(9,-24) rotate(20)"><path d="M0 -7 L2 -2 L7 -3 L4 1 L6 6 L0 3 L-6 6 L-4 1 L-7 -3 L-2 -2Z" fill="#f59a4a"/><path d="M0 3 v6" stroke="#c9733a" stroke-width="1.2"/></g>';
+    return '<g><path d="M-17 4 Q0 10 17 4 L17 8 Q0 14 -17 8Z" fill="#f07a8a"/><path d="M9 7 l3 9 l4 -1 l-3 -8z" fill="#e2627a"/></g>';
+  }
+  // 분야별 오늘 목표 링 (Apple 활동 링 방식)
+  function todayRings() {
+    var agg = aggregate(), t = today(), cs = data.categories.filter(function (c) { return c.dailyGoalMin; }).slice(0, 3);
+    if (!cs.length) return '';
+    var s = '<svg class="rings" viewBox="0 0 36 36" aria-hidden="true">';
+    cs.forEach(function (c, i) {
+      var r = 15 - i * 4.6, C = 2 * Math.PI * r, p = Math.min(1, ((agg[c.id] || {})[t] || 0) / c.dailyGoalMin);
+      s += '<circle cx="18" cy="18" r="' + r.toFixed(1) + '" fill="none" stroke="' + esc(c.color) + '" stroke-opacity=".22" stroke-width="3.6"/>' +
+        '<circle cx="18" cy="18" r="' + r.toFixed(1) + '" fill="none" stroke="' + esc(c.color) + '" stroke-width="3.6" stroke-linecap="round" stroke-dasharray="' + (C * p).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 18 18)"/>';
+    });
+    return s + '</svg>';
   }
   // 일반/다크 테마 나무
   function plainTreeSVG(stage) { return growTree(stage, isDark() ? TREE_PAL.dark : TREE_PAL.plain, 180, 176, false); }
@@ -508,9 +551,16 @@
       if (Math.abs(x - 180) < 30) x += x < 180 ? -36 : 36;
       return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + col + '"/>';
     }).join('');
+    var dk = isDark(), nDone = quests.filter(function (q) { return q.done; }).length, sky = '';
+    if (dk) {
+      for (var si = 0; si < 16; si++) sky += '<circle class="twinkle" style="animation-delay:' + (si * .41 % 2.6).toFixed(2) + 's" cx="' + ((si * 71 + 23) % 360) + '" cy="' + (10 + (si * 37) % 80) + '" r="' + (si % 3 ? .9 : 1.4) + '" fill="#dfe6ff"/>';
+      sky += '<circle cx="296" cy="40" r="30" fill="#d6ddff" opacity=".08"/><circle cx="296" cy="40" r="12" fill="#eef1ff"/><circle cx="301" cy="36" r="10.5" fill="#18223a"/>' +
+        '<path d="M0 150 Q70 120 140 140 T280 128 T360 136 V212 H0Z" fill="#172036"/><path d="M0 168 Q100 146 200 162 T360 156 V212 H0Z" fill="#18282f"/>';
+      for (var fi = 0; fi < 7; fi++) sky += '<circle class="twinkle" style="animation-delay:' + (fi * .7) + 's" cx="' + (40 + (fi * 53) % 290) + '" cy="' + (140 + (fi * 17) % 36) + '" r="1.6" fill="#e6ff9a"/>';
+    } else sky = '<path d="M0 160 Q80 132 170 150 T360 142 V212 H0Z" fill="#e4f1fb"/><path d="M0 172 Q110 154 210 166 T360 162 V212 H0Z" fill="#dcf2e6"/>';
     $('garden').innerHTML = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' +
-      '<defs><linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (isDark() ? '#1b2638' : '#e8f3ff') + '"/><stop offset="1" stop-color="' + (isDark() ? '#1c1c22' : '#ffffff') + '"/></linearGradient></defs><rect width="360" height="212" fill="url(#pSky)"/><ellipse cx="180" cy="200" rx="240" ry="28" fill="' + (isDark() ? '#1d3329' : '#e3f7ec') + '"/>' +
-      plainTreeSVG(stage) + dots + '</svg>';
+      '<defs><linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (isDark() ? '#0f1830' : '#e8f3ff') + '"/><stop offset="1" stop-color="' + (isDark() ? '#1c1c22' : '#ffffff') + '"/></linearGradient></defs><rect width="360" height="212" fill="url(#pSky)"/>' + sky + '<ellipse cx="180" cy="200" rx="240" ry="28" fill="' + (isDark() ? '#1d3329' : '#e3f7ec') + '"/>' +
+      questProps(nDone, 188, dk) + plainTreeSVG(stage) + dots + '</svg>';
     $('sceneTag').textContent = 'Lv.' + L + ' ' + titleOf(L) + ' · 목표 달성 ' + fl.length + '회 (30일)';
     var done = quests.filter(function (q) { return q.done; }).length;
     if (!bubbleLocked) setBubble(quests.length && done === quests.length ? '오늘 할 일을 모두 끝냈어요' : '오늘 퀘스트 ' + done + ' / ' + quests.length + ' 완료');
@@ -567,7 +617,7 @@
       bg = '<rect width="360" height="212" fill="#ffb6a0" opacity=".14"/>';
     }
     var svg = '<svg viewBox="0 0 360 212" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">' + defs + bg +
-      treeSVG(stage) + flowers + momoSVG(mood) +
+      lightOverlay(h, sky) + questProps(quests.filter(function (q) { return q.done; }).length, 186, sky.night) + treeSVG(stage) + flowers + momoSVG(mood) +
       (sky.night && !useImg() ? '<rect width="360" height="212" fill="#3a3270" opacity=".12"/>' : '') +
       '</svg>';
     $('garden').innerHTML = svg;
@@ -1047,7 +1097,7 @@
   function renderHome() {
     var quests = getQuests();
     var done = quests.filter(function (x) { return x.done; }).length;
-    $('questCount').textContent = done + ' / ' + quests.length + ' 완료';
+    $('questCount').innerHTML = todayRings() + done + ' / ' + quests.length + ' 완료';
     $('quests').innerHTML = quests.map(function (x, i) {
       return '<li class="quest' + (x.done ? ' done' : '') + '" data-qi="' + i + '" style="--c:' + esc(x.color) + '">' +
         '<div class="q-ic">' + ic(x.ic) + '</div><div class="q-body"><div class="q-title">' + esc(x.title) + '</div>' +
