@@ -2601,7 +2601,7 @@
   $('addClose').addEventListener('click', function () { $('addDlg').close(); });
   $('addDlg').addEventListener('click', function (ev) { if (ev.target === this) this.close(); });
   function syncFab() {
-    var v = currentView, show = v === 'log' || v === 'calendar' || v === 'stats';
+    var v = currentView, show = v === 'log' || v === 'calendar';
     $('fab').hidden = !show;
   }
 

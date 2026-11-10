@@ -1423,3 +1423,37 @@ html:not(.theme-plain) .rc-exp p, html:not(.theme-plain) .rc-ko { color: #4a4270
   .eng-nav h2 { font-size: 17px; }
 }
 @media (max-width: 380px) { .eng-top { grid-template-columns: auto minmax(0, 1fr); } .eng-top .ring-btn { display: none; } }
+
+/* ===================== 기록 · 통계 휴대폰 정리 ===================== */
+@media (max-width: 600px) {
+  /* 기록: 필터 낮게, 떠 있는 버튼에 마지막 줄이 안 가리게 */
+  .filters { gap: 6px; }
+  .filters > * { min-width: 0; flex: 1 1 calc(50% - 3px); }
+  .filters .field { padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
+  #view-log { padding-bottom: 64px; }
+  .entries .e-ic { width: 36px; height: 36px; }
+  .entries .btn.icon-only { width: 34px; height: 34px; padding: 0; }
+  /* 통계: 분야별 요약은 카드 대신 줄 */
+  #statSummary { grid-template-columns: 1fr; gap: 0; }
+  #statSummary .stat, .theme-plain #statSummary .stat { background: transparent; border: 0; border-radius: 0; padding: 12px 2px; box-shadow: none; }
+  #statSummary .stat::before { display: none; }
+  #statSummary .stat + .stat { border-top: 1px solid rgba(125,116,168,.14); }
+  .theme-dark #statSummary .stat + .stat { border-color: rgba(255,255,255,.07); }
+  #statSummary .stat .big { font-size: 22px; }
+  #statSummary .stat .s { font-size: 12.5px; }
+  /* 토익 숫자는 2×2 */
+  #statEng { grid-template-columns: 1fr 1fr; gap: 8px; }
+  #statEng .stat { padding: 12px; border-radius: 16px; }
+  #statEng .stat .name { font-size: 13px; }
+  #statEng .stat .big { font-size: 21px; }
+  #statEng .stat .s { font-size: 11.5px; line-height: 1.45; }
+  .chart { height: 150px; }
+  .wk-top { gap: 10px; }
+}
+@media (max-width: 600px) {
+  #statSummary .stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; }
+  #statSummary .stat .name { grid-row: 1; grid-column: 1; }
+  #statSummary .stat .big, .theme-plain #statSummary .stat .big { grid-row: 1; grid-column: 2; font-size: 20px; }
+  #statSummary .stat .s { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) { .part-stats .lv-row { grid-template-columns: 52px minmax(0, 1fr) auto; } }
