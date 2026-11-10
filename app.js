@@ -10,6 +10,8 @@
 
   // ================= 아이콘 (직접 그린 라인 SVG) =================
   var ICONS = {
+    lecture: '<rect x="3" y="4" width="18" height="13" rx="2.5"/><path d="M10 8.3v5.4l4.5-2.7z"/><path d="M8 21h8M12 17v4"/>',
+    doc: '<path d="M6.5 3h7.5l4 4v13.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V3.5a.5.5 0 0 1 .5-.5z"/><path d="M14 3v4h4M9 12h6M9 15.5h6M9 9h2.5"/>',
     door: '<path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21"/><path d="M3.5 21h17"/><circle cx="14.6" cy="12.4" r=".9" class="dotf"/>',
     letters: '<path d="M3.5 18 8 6l4.5 12"/><path d="M5.2 14h5.6"/><path d="M20 10.5V18"/><path d="M20 14.3c0-2.3-1.2-3.8-3-3.8s-3 1.6-3 3.8 1.2 3.7 3 3.7 3-1.5 3-3.7z"/>',
     notebook: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 3v18"/><path d="M12.5 8h3.5M12.5 12h3.5"/>',
@@ -122,6 +124,9 @@
     d.english.stars = d.english.stars || {};
     d.english.exams = d.english.exams || [];
     d.english.custom = d.english.custom || [];
+    d.english.lessons = d.english.lessons || {};
+    d.english.rc = d.english.rc || {};
+    d.english.rc.sets = d.english.rc.sets || {}; d.english.rc.qs = d.english.rc.qs || {}; d.english.rc.log = d.english.rc.log || [];
     d.routines = d.routines || [];
     d.categories.forEach(function (c) { if (c.id === 'exercise' && c.parts === undefined) c.parts = true; });
     d.game = d.game || {};
@@ -203,7 +208,7 @@
     $('xpTxt').textContent = li.cur + ' / ' + li.need + ' xp';
     $('hudStreak').textContent = streaks(allDays()).current;
     $('hudDate').textContent = prettyDate(today());
-    if (currentView === 'english' && (eng.screen === 'study' || eng.screen === 'quiz')) return; // 공부·시험 중엔 레벨업 연출 보류
+    if (currentView === 'english' && (eng.screen === 'study' || eng.screen === 'quiz' || eng.screen === 'rc' || (eng.screen === 'lesson' && eng.lesson && eng.lesson.phase !== 'done'))) return; // 공부·시험 중엔 레벨업 연출 보류
     if (!data.game.lastLevel || li.level < data.game.lastLevel) { data.game.lastLevel = li.level; save(); }
     else if (li.level > data.game.lastLevel) {
       data.game.lastLevel = li.level; save();
@@ -1311,9 +1316,11 @@
     });
     var vocab = .45 * cov[1] + .35 * cov[2] + .2 * cov[3];
     var acc = recentAcc();
-    var anyData = dg || acc != null || W.some(function (x) { var s = data.english.words[x.w]; return s && s.intro; });
+    var rl = (data.english.rc && data.english.rc.log) || [];
+    var anyData = rl.length >= 8 || dg || acc != null || W.some(function (x) { var s = data.english.words[x.w]; return s && s.intro; });
     if (!anyData) return null;
     var v = 200 + 790 * (acc == null ? vocab : .7 * vocab + .3 * acc * Math.min(1, .3 + vocab));
+    if (rl.length >= 8) { var rr = rl.slice(-60), ra = rr.reduce(function (x, y) { return x + y; }, 0) / rr.length; v = .75 * v + .25 * (200 + 790 * ra); }
     return Math.max(10, Math.min(990, Math.round(v / 5) * 5));
   }
   function weakDomains() {
@@ -1359,10 +1366,353 @@
     return pick.map(function (x) { return x.w; });
   }
 
+  // ---------- 강의 · RC 실전 (Part 6·7) ----------
+  var RCD = window.TOEIC_RC || { p6: [], p7: [] }, RCMAP = {};
+  RCD.p6.concat(RCD.p7).forEach(function (s) { RCMAP[s.id] = s; });
+  var RC_ALL = RCD.p6.concat(RCD.p7);
+  var TRACKS = { intro: ['오리엔테이션', 'sparkle'], p5: ['Part 5 문법·어휘', 'pen'], p6: ['Part 6 장문 빈칸', 'letters'], p7: ['Part 7 독해', 'book'], voca: ['어휘 전략', 'cards'] };
+  var TRACK_ORDER = ['intro', 'p5', 'p6', 'p7', 'voca'];
+  var LESSONS = (window.TOEIC_LESSONS || []).slice().sort(function (a, b) { return TRACK_ORDER.indexOf(a.track) - TRACK_ORDER.indexOf(b.track) || a.no - b.no; });
+  var LMAP = {}; LESSONS.forEach(function (l) { LMAP[l.id] = l; });
+  var CURRICULUM = (function () { // 산타식으로 파트를 섞어 듣는 순서
+    var cnt = {}; LESSONS.forEach(function (l) { cnt[l.track] = (cnt[l.track] || 0) + 1; });
+    function k(l) { return l.track === 'intro' ? -1 + l.no / 100 : (l.no - .5) / cnt[l.track] + TRACK_ORDER.indexOf(l.track) * .001; }
+    return LESSONS.slice().sort(function (a, b) { return k(a) - k(b); });
+  })();
+  var KIND_NAME = { single: '단일 지문', double: '이중 지문', triple: '삼중 지문' };
+  var ABCD = 'ABCD';
+  function fmt(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+  function exAll(s) { return esc(s).replace(/\*([^*]+)\*/g, '<mark>$1</mark>'); }
+  function lessonDone(id) { var x = data.english.lessons[id]; return !!(x && x.done); }
+  function nextLesson() { return CURRICULUM.filter(function (l) { return !lessonDone(l.id); })[0] || null; }
+  function setStat(id) { return data.english.rc.sets[id]; }
+  function partLabel(s) { return s.part === 'p6' ? 'Part 6' : 'Part 7 · ' + KIND_NAME[s.kind]; }
+  function setType(s) { return s.part === 'p6' ? s.type : s.docs.map(function (d) { return d.type; }).join(' + '); }
+  function rcTargetLv() {
+    var c = data.settings.course.level; if (c === 1 || c === 2 || c === 3) return c;
+    if (data.english.diag) return data.english.diag.level;
+    var e = estScore() || 0; return e >= 750 ? 3 : e >= 600 ? 2 : 1;
+  }
+  function rcPool(kind) {
+    return kind === 'p6' ? RCD.p6 : kind === 'p7s' ? RCD.p7.filter(function (s) { return s.kind === 'single'; }) : kind === 'p7m' ? RCD.p7.filter(function (s) { return s.kind !== 'single'; }) : RC_ALL;
+  }
+  function recommendSet(kind, exclude) {
+    exclude = exclude || [];
+    var lv = rcTargetLv(), doms = data.settings.course.domains || [];
+    var pool = rcPool(kind).filter(function (s) { return exclude.indexOf(s.id) < 0; });
+    if (!pool.length) return null;
+    function score(s) {
+      var st = setStat(s.id), v = 0;
+      if (st) v += 100 + (st.t ? st.best / st.t : 1) * 50 + st.n * 5; // 안 푼 세트 우선, 푼 건 점수 낮은 것부터
+      v += Math.abs(s.lv - lv) * 30;
+      if (doms.length && doms.indexOf(s.d) < 0) v += 12;
+      return v + Math.random() * 6;
+    }
+    return pool.map(function (s) { return [score(s), s]; }).sort(function (a, b) { return a[0] - b[0]; })[0][1];
+  }
+  function recommendPair() {
+    var a = recommendSet('p6'), b = recommendSet(rcTargetLv() >= 2 && Math.random() < .35 ? 'p7m' : 'p7s');
+    return [a, b].filter(Boolean).map(function (s) { return s.id; });
+  }
+  function wrongSetIds() {
+    var qs = data.english.rc.qs, ids = [];
+    Object.keys(qs).forEach(function (k) { var id = k.split('#')[0]; if (qs[k].note && RCMAP[id] && ids.indexOf(id) < 0) ids.push(id); });
+    return ids;
+  }
+  function rcTypeStats() {
+    var qs = data.english.rc.qs, r = {};
+    Object.keys(qs).forEach(function (k) {
+      var p = k.split('#'), s = RCMAP[p[0]], q = s && s.q[+p[1]]; if (!q) return;
+      var key = (s.part === 'p6' ? 'P6 ' : 'P7 ') + q.k, o = r[key] || (r[key] = [0, 0]);
+      o[0] += qs[k].r; o[1] += qs[k].r + qs[k].w;
+    });
+    return r;
+  }
+
+  // 지문 렌더링: 빈 줄 = 문단, | 표 |, {n} 빈칸, [n] 삽입 위치, 채팅 화자
+  function rcLine(l, blankFn) {
+    var h = esc(l);
+    h = h.replace(/\{(\d)\}/g, function (m, n) { return blankFn ? blankFn(+n) : '______'; });
+    h = h.replace(/\[(\d)\]/g, '<b class="rc-mark">[$1]</b>');
+    h = h.replace(/^([A-Z][^\[\]:]{1,40}?)\s*(\[\d{1,2}:\d{2}\s*[AP]\.?M\.?\])\s*:/, '<b class="rc-spk">$1</b> <span class="rc-time">$2</span>');
+    return h;
+  }
+  function rcText(text, blankFn) {
+    var out = '', para = [], tbl = [];
+    function flushP() { if (para.length) { out += '<p>' + para.join('<br>') + '</p>'; para = []; } }
+    function flushT() {
+      if (!tbl.length) return;
+      out += '<div class="rc-table-wrap"><table class="rc-table"><thead><tr>' + tbl[0].map(function (c) { return '<th>' + rcLine(c, blankFn) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        tbl.slice(1).filter(function (r) { return !r.every(function (c) { return /^:?-{2,}:?$/.test(c); }); }).map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + rcLine(c, blankFn) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+      tbl = [];
+    }
+    String(text).split('\n').forEach(function (l) {
+      if (/^\s*\|.*\|\s*$/.test(l)) { flushP(); tbl.push(l.trim().slice(1, -1).split('|').map(function (c) { return c.trim(); })); return; }
+      flushT();
+      if (!l.trim()) { flushP(); return; }
+      para.push(rcLine(l, blankFn));
+    });
+    flushP(); flushT();
+    return out;
+  }
+  function choiceList(q, picked, act) {
+    return '<div class="choices rc-choices">' + q.o.map(function (o, i) {
+      var cls = picked == null ? '' : i === q.a ? ' right' : i === picked ? ' wrong' : '';
+      return '<button class="choice rc-choice' + cls + '" data-eng="' + act + '" data-i="' + i + '"' + (picked != null ? ' disabled' : '') + '><span class="n">' + ABCD[i] + '</span><span>' + esc(o) + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function expBox(q, picked, nextAct, nextLabel) {
+    if (picked == null) return '<div class="kbd-hint">숫자키 1~4로 선택</div>';
+    var ok = picked === q.a;
+    return '<div class="rc-exp ' + (ok ? 'ok' : 'no') + '"><b>' + (ok ? ic('check') + '정답이에요' : ic('x') + '오답 · 정답은 ' + ABCD[q.a]) + '</b><p>' + fmt(q.e) + '</p></div>' +
+      '<button class="btn sky block" data-eng="' + nextAct + '" id="nextBtn">' + nextLabel + ' ' + ic('right') + '</button>';
+  }
+
+  // ----- 실전 세트 풀기 -----
+  function startRC(ids, opt) {
+    opt = opt || {};
+    ids = ids.filter(function (id) { return RCMAP[id]; });
+    if (!ids.length) { toast('풀 수 있는 세트가 없어요'); return; }
+    eng.rc = { ids: ids, si: 0, qi: 0, picked: {}, correct: 0, total: 0, start: Date.now(), title: opt.title || '실전 RC', exam: opt.exam || null, byK: {}, wrongs: [], showKo: false, setDone: false };
+    eng.screen = 'rc'; window.scrollTo(0, 0); renderEnglish();
+  }
+  function p6Blank(set, n) {
+    var r = eng.rc, key = set.id + '#' + (n - 1), pi = r.picked[key], q = set.q[n - 1];
+    if (!q) return '______';
+    if (pi != null) return '<span class="rc-blank filled ' + (pi === q.a ? 'ok' : 'no') + '"><i>' + n + '</i>' + esc(q.o[q.a]) + '</span>';
+    return '<span class="rc-blank' + (!r.setDone && r.qi === n - 1 ? ' cur' : '') + '"><i>' + n + '</i></span>';
+  }
+  function renderRC(root) {
+    var r = eng.rc, set = RCMAP[r.ids[r.si]], q = set.q[r.qi], picked = r.picked[set.id + '#' + r.qi];
+    var totalQ = r.ids.reduce(function (s, id) { return s + RCMAP[id].q.length; }, 0), doneQ = Object.keys(r.picked).length;
+    var head = '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="' + (r.exam ? 'home' : 'rchub') + '" title="나가기">' + ic('x') + '</button>' +
+      '<div class="prog"><div class="bar"><i style="width:' + (doneQ / totalQ * 100) + '%"></i></div></div><span class="cnt">' + (r.si + 1) + ' / ' + r.ids.length + '세트</span></div>';
+    var docs = set.part === 'p6' ? [{ type: set.type, title: set.title, text: set.text, ko: set.ko }] : set.docs;
+    var tag = '<div class="rc-tag"><span class="rc-part">' + partLabel(set) + '</span>' + ic(dIcon(set.d)) + dName(set.d) + ' ' + lvDots(set.lv) + (r.exam ? '<span class="chip-sm">' + esc(r.title) + '</span>' : '') + '</div>';
+    var passage = docs.map(function (d, i) {
+      return '<article class="rc-doc"><div class="rc-doc-h"><span class="rc-type">' + esc(d.type) + (docs.length > 1 ? ' ' + (i + 1) : '') + '</span>' + (d.title ? '<b>' + esc(d.title).split(' / ').join('<br>') + '</b>' : '') + '</div>' +
+        '<div class="rc-body">' + rcText(d.text, set.part === 'p6' ? function (n) { return p6Blank(set, n); } : null) + '</div>' +
+        (r.setDone && r.showKo ? '<div class="rc-ko">' + fmt(d.ko || set.ko || '') + '</div>' : '') + '</article>';
+    }).join('');
+    var panel;
+    if (!r.setDone) {
+      panel = '<div class="card rc-q" id="rcQ"><div class="rc-q-h"><span class="rc-qn">' + (set.part === 'p6' ? '빈칸 ' : 'Q') + (r.qi + 1) + '<small> / ' + set.q.length + '</small></span><span class="tag">' + esc(q.k) + '</span></div>' +
+        '<div class="rc-stem">' + (q.s ? fmt(q.s) : '빈칸 <b>(' + (r.qi + 1) + ')</b>에 들어갈 가장 알맞은 것을 고르세요') + '</div>' +
+        choiceList(q, picked, 'rcans') + expBox(q, picked, 'rcnext', r.qi + 1 < set.q.length ? '다음 문제' : '세트 마무리') + '</div>';
+    } else {
+      var c = set.q.filter(function (qq, i) { return r.picked[set.id + '#' + i] === qq.a; }).length;
+      panel = '<div class="card rc-sum" id="rcQ"><div class="card-h"><h2>' + ic('check') + '세트 완료 · ' + c + ' / ' + set.q.length + '</h2>' +
+        '<button class="btn tiny glass" data-eng="rcko">' + ic('eye') + (r.showKo ? '해석 숨기기' : '지문 해석 보기') + '</button></div>' +
+        '<div class="rc-review">' + set.q.map(function (qq, i) {
+          var pk = r.picked[set.id + '#' + i], ok = pk === qq.a;
+          return '<details class="rc-rv ' + (ok ? 'ok' : 'no') + '"><summary><span class="mk">' + ic(ok ? 'check' : 'x') + '</span>' + (set.part === 'p6' ? '빈칸 ' : 'Q') + (i + 1) + ' · ' + esc(qq.k) + '<span class="muted small"> 정답 ' + ABCD[qq.a] + (ok ? '' : ' · 내 답 ' + ABCD[pk]) + '</span></summary>' +
+            (qq.s ? '<p class="rc-stem small">' + fmt(qq.s) + '</p>' : '') + '<p class="small"><b>' + ABCD[qq.a] + '.</b> ' + esc(qq.o[qq.a]) + '</p><p class="small muted">' + fmt(qq.e) + '</p></details>';
+        }).join('') + '</div>' +
+        '<h3 class="rc-sub">' + ic('cards') + '핵심 어휘</h3><ul class="rc-voca">' + (set.voca || []).map(function (v) {
+          return '<li><b>' + esc(v[0]) + '</b>' + spkBtn(v[0]) + '<span>' + esc(v[1]) + '</span></li>';
+        }).join('') + '</ul>' +
+        '<button class="btn primary block" data-eng="rcnextset">' + (r.si + 1 < r.ids.length ? '다음 세트 ' + ic('right') : ic('check') + '결과 보기') + '</button></div>';
+    }
+    root.innerHTML = head + tag + '<div class="rc-wrap"><div class="rc-passage">' + passage + '</div>' + panel + '</div>';
+  }
+  function rcAnswer(i) {
+    var r = eng.rc, set = RCMAP[r.ids[r.si]], q = set.q[r.qi], key = set.id + '#' + r.qi;
+    if (r.picked[key] != null || r.setDone) return;
+    r.picked[key] = i;
+    var ok = i === q.a;
+    r.total++; if (ok) r.correct++; else r.wrongs.push(key);
+    var bk = r.byK[q.k] || (r.byK[q.k] = [0, 0]); bk[1]++; if (ok) bk[0]++;
+    var R = data.english.rc, qs = R.qs[key] || (R.qs[key] = { r: 0, w: 0, note: false });
+    if (ok) { qs.r++; qs.note = false; } else { qs.w++; qs.note = true; }
+    R.log.push(ok ? 1 : 0); if (R.log.length > 300) R.log = R.log.slice(-300);
+    save(); sfx(ok ? 'ok' : 'no');
+    renderEnglish();
+    var nb = $('nextBtn'); if (nb && nb.scrollIntoView) nb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  function rcNext() {
+    var r = eng.rc, set = RCMAP[r.ids[r.si]];
+    if (r.qi + 1 < set.q.length) { r.qi++; renderEnglish(); }
+    else {
+      r.setDone = true;
+      var c = set.q.filter(function (qq, i) { return r.picked[set.id + '#' + i] === qq.a; }).length;
+      var st = data.english.rc.sets[set.id] || (data.english.rc.sets[set.id] = { n: 0, best: 0 });
+      st.n++; st.best = Math.max(st.best, c); st.last = c; st.t = set.q.length; st.date = today();
+      var p = getPlan(today()); p.rc = (p.rc || 0) + 1;
+      save(); sfx('save'); renderEnglish();
+    }
+    var el = $('rcQ'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function rcNextSet() {
+    var r = eng.rc; r.si++;
+    if (r.si >= r.ids.length) return rcFinish();
+    r.qi = 0; r.setDone = false; r.showKo = false; window.scrollTo(0, 0); renderEnglish();
+  }
+  function rcFinish() {
+    var r = eng.rc, pct = r.total ? Math.round(r.correct / r.total * 100) : 0;
+    r.gained = r.correct * 3 + r.ids.length * 5 + (r.exam ? 20 : 0); r.pct = pct;
+    if (r.exam) { var ex = data.english.exams; for (var i = ex.length - 1; i >= 0; i--) if (ex[i].type === r.exam) { ex[i].rc = [r.correct, r.total]; break; } }
+    addXP(r.gained);
+    autoLog(r.start, '토익 ' + r.title + ' · ' + r.correct + '/' + r.total);
+    save(); sfx('done'); if (pct >= 70) confetti(pct === 100 ? 80 : 40);
+    eng.screen = 'rcResult'; window.scrollTo(0, 0); renderEnglish(); renderHud();
+  }
+  function renderRCResult(root) {
+    var r = eng.rc, pct = r.pct, stars = pct >= 90 ? 3 : pct >= 70 ? 2 : pct >= 40 ? 1 : 0;
+    var msg = pct === 100 ? '전부 맞혔어요' : pct >= 80 ? '실전 감각이 좋아요' : pct >= 60 ? '근거 문장을 한 번 더 확인해 봐요' : '해설과 해석을 천천히 다시 읽어 봐요';
+    var wr = r.wrongs.map(function (k) { var p = k.split('#'), s = RCMAP[p[0]], q = s.q[+p[1]]; return '<li><span class="tag wrong">' + esc(q.k) + '</span> ' + partLabel(s) + ' · ' + esc(setType(s)) + ' <span class="muted small">' + (s.part === 'p6' ? '빈칸 ' : 'Q') + (+p[1] + 1) + '</span></li>'; }).join('');
+    var wrongSets = []; r.wrongs.forEach(function (k) { var id = k.split('#')[0]; if (wrongSets.indexOf(id) < 0) wrongSets.push(id); });
+    root.innerHTML = '<div class="card result"><p class="whisper">' + esc(r.title) + '</p>' +
+      '<div class="stars">' + [0, 1, 2].map(function (i) { return ic('sparkle', i < stars ? 'on' : 'off'); }).join('') + '</div>' +
+      '<div class="score">' + r.correct + '<small> / ' + r.total + '</small></div><h2>' + msg + '</h2>' +
+      '<p class="muted">' + pct + '점 · ' + r.ids.length + '세트 · +' + r.gained + ' xp</p>' +
+      '<div class="card" style="text-align:left;margin:14px 0 0"><h2>' + ic('chart') + '유형별</h2>' + Object.keys(r.byK).map(function (k) {
+        var b = r.byK[k]; return '<div class="lv-row"><span>' + esc(k) + '</span><div class="bar"><i style="width:' + (b[0] / b[1] * 100) + '%"></i></div><span class="muted small">' + b[0] + '/' + b[1] + '</span></div>';
+      }).join('') + '</div>' +
+      (wr ? '<div class="card" style="text-align:left;margin:14px 0 0"><h2>' + ic('rewind') + '틀린 문제 · 오답에 저장됨</h2><ul class="rc-wl">' + wr + '</ul></div>' : '') +
+      '<div class="row" style="justify-content:center;margin-top:14px">' +
+      (wrongSets.length ? '<button class="btn butter" data-eng="rcretry" data-ids="' + wrongSets.join(',') + '">' + ic('rewind') + '틀린 세트 다시</button>' : '') +
+      '<button class="btn sky" data-eng="rcrec">' + ic('doc') + '추천 세트 더 풀기</button></div>' +
+      '<button class="btn glass block" data-eng="rchub" style="font-size:14px">Part 6·7 문제 목록</button>' +
+      '<button class="btn glass block" data-eng="home" style="font-size:14px">영어 홈으로</button></div>';
+  }
+
+  // ----- 문제 목록 -----
+  var rcHub = { tab: 'p6', lv: '' };
+  function renderRCHub(root) {
+    var R = data.english.rc, solved = RC_ALL.filter(function (s) { return setStat(s.id); }).length;
+    var log = R.log.slice(-60), acc = log.length ? Math.round(log.reduce(function (a, b) { return a + b; }, 0) / log.length * 100) : null;
+    var wrongIds = wrongSetIds();
+    var list = rcHub.tab === 'wrong' ? wrongIds.map(function (id) { return RCMAP[id]; }) : rcPool(rcHub.tab);
+    if (rcHub.lv) list = list.filter(function (s) { return String(s.lv) === rcHub.lv; });
+    var T = { p6: 'Part 6', p7s: 'Part 7 단일', p7m: 'Part 7 복수', wrong: '오답 ' + wrongIds.length };
+    root.innerHTML = '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="home">' + ic('left') + '</button><h2>' + ic('doc') + '실전 RC</h2><span class="cnt">' + solved + ' / ' + RC_ALL.length + '</span></div>' +
+      '<div class="card"><div class="rc-stats"><div><small>푼 세트</small><b>' + solved + '</b></div><div><small>최근 정답률</small><b>' + (acc == null ? '—' : acc + '%') + '</b></div><div><small>오답 세트</small><b>' + wrongIds.length + '</b></div></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn primary" data-eng="rcrec">' + ic('play') + '추천 2세트 풀기</button>' +
+      '<button class="btn glass" data-eng="rcwrong"' + (wrongIds.length ? '' : ' disabled') + '>' + ic('rewind') + '오답 다시 풀기</button></div>' +
+      '<p class="muted small" style="margin:8px 0 0">추천 난이도: ' + LV_SHORT[rcTargetLv()] + ' · 학습 코스와 진단 결과를 따라가요</p></div>' +
+      '<div class="card"><div class="seg">' + Object.keys(T).map(function (k) { return '<button data-eng="rctab" data-f="' + k + '" class="' + (k === rcHub.tab ? 'on' : '') + '">' + T[k] + '</button>'; }).join('') + '</div>' +
+      '<div class="seg">' + [['', '전체'], ['1', '기초'], ['2', '중급'], ['3', '고급']].map(function (o) { return '<button data-eng="rclv" data-f="' + o[0] + '" class="' + (o[0] === rcHub.lv ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      (list.length ? '<ul class="rc-list">' + list.map(function (s) {
+        var st = setStat(s.id), first = s.part === 'p6' ? s.title : (s.docs[0].title || s.docs[0].text);
+        return '<li><button class="rc-row" data-eng="rcset" data-id="' + s.id + '"><span class="q-ic" style="--c:' + (s.part === 'p6' ? '#8b7cf6' : '#3182f6') + '">' + ic(dIcon(s.d)) + '</span>' +
+          '<span class="q-body"><span class="q-title">' + esc(setType(s)) + ' <span class="muted small">' + dName(s.d) + ' · ' + s.q.length + '문항</span></span><span class="q-sub">' + esc(String(first).split(' / ')[0].slice(0, 60)) + '</span></span>' +
+          lvDots(s.lv) + (st ? '<span class="tag ' + (st.best === st.t ? 'ok' : '') + '">' + st.best + '/' + st.t + '</span>' : '<span class="tag new">new</span>') + '</button></li>';
+      }).join('') + '</ul>' : '<p class="muted center">' + (rcHub.tab === 'wrong' ? '오답 세트가 없어요' : '이 조건의 세트가 없어요') + '</p>') + '</div>';
+  }
+
+  // ----- 강의 -----
+  function renderLessons(root) {
+    var nx = nextLesson(), done = LESSONS.filter(function (l) { return lessonDone(l.id); }).length;
+    root.innerHTML = '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="home">' + ic('left') + '</button><h2>' + ic('lecture') + '토익 강의</h2><span class="cnt">' + done + ' / ' + LESSONS.length + '</span></div>' +
+      '<div class="card ls-hero"><div class="bar"><i style="width:' + (done / Math.max(1, LESSONS.length) * 100) + '%"></i></div>' +
+      (nx ? '<p class="muted small">다음 순서 · 파트를 섞어 듣는 추천 커리큘럼</p><button class="rc-next" data-eng="lesson" data-id="' + nx.id + '"><span class="exam-ic">' + ic(TRACKS[nx.track][1]) + '</span><span class="q-body"><span class="q-title">' + esc(nx.title) + '</span><span class="q-sub">' + TRACKS[nx.track][0] + ' · ' + nx.min + '분 · ' + esc(nx.sub) + '</span></span>' + ic('play') + '</button>'
+        : '<p><b>모든 강의를 들었어요.</b> 복습하고 싶은 강의를 골라 보세요.</p>') + '</div>' +
+      TRACK_ORDER.filter(function (t) { return LESSONS.some(function (l) { return l.track === t; }); }).map(function (t) {
+        var ls = LESSONS.filter(function (l) { return l.track === t; }), dn = ls.filter(function (l) { return lessonDone(l.id); }).length;
+        return '<div class="card"><div class="card-h"><h2>' + ic(TRACKS[t][1]) + TRACKS[t][0] + '</h2><span class="chip-sm">' + dn + ' / ' + ls.length + '</span></div><ul class="ls-list">' + ls.map(function (l) {
+          var x = data.english.lessons[l.id];
+          return '<li><button class="ls-row' + (x && x.done ? ' done' : '') + '" data-eng="lesson" data-id="' + l.id + '"><span class="ls-no">' + (x && x.done ? ic('check') : l.no) + '</span><span class="q-body"><span class="q-title">' + esc(l.title) + '</span><span class="q-sub">' + esc(l.sub) + ' · ' + l.min + '분</span></span>' +
+            (x && x.score ? '<span class="tag ok">' + x.score[0] + '/' + x.score[1] + '</span>' : '') + '</button></li>';
+        }).join('') + '</ul></div>';
+      }).join('');
+  }
+  function startLesson(id) {
+    if (!LMAP[id]) return;
+    eng.lesson = { id: id, phase: 'learn', ci: 0, picked: {}, correct: 0, start: Date.now() };
+    eng.screen = 'lesson'; window.scrollTo(0, 0); renderEnglish();
+  }
+  function lessonBlock(b) {
+    if (b.t === 'p') return '<p class="ls-p">' + fmt(b.x) + '</p>';
+    if (b.t === 'rule') return '<div class="ls-rule"><b>' + fmt(b.h) + '</b><p>' + fmt(b.x) + '</p></div>';
+    if (b.t === 'ex') return '<div class="ls-ex">' + spkBtn(b.en.replace(/\*/g, '')) + '<p class="ex-en">' + exAll(b.en) + '</p><p class="ex-ko">' + esc(b.ko) + '</p>' + (b.note ? '<p class="ls-note">' + ic('right') + '<span>' + fmt(b.note) + '</span></p>' : '') + '</div>';
+    if (b.t === 'table') return '<div class="rc-table-wrap"><table class="rc-table"><thead><tr>' + b.head.map(function (h) { return '<th>' + fmt(h) + '</th>'; }).join('') + '</tr></thead><tbody>' + b.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + fmt(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    if (b.t === 'tip') return '<div class="ls-tip">' + ic('sparkle') + '<div><b>TIP</b>' + fmt(b.x) + '</div></div>';
+    if (b.t === 'trap') return '<div class="ls-trap">' + ic('flame') + '<div><b>함정 주의</b>' + fmt(b.x) + '</div></div>';
+    return '';
+  }
+  function renderLesson(root) {
+    var s = eng.lesson, l = LMAP[s.id], n = l.check.length;
+    var nav = '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="lessons" title="강의 목록">' + ic('left') + '</button>';
+    if (s.phase === 'learn') {
+      root.innerHTML = nav + '<h2>' + ic(TRACKS[l.track][1]) + TRACKS[l.track][0] + ' · ' + l.no + '강</h2></div>' +
+        '<div class="card ls-head"><div class="ls-kicker">' + TRACKS[l.track][0] + ' · ' + l.min + '분</div><h1 class="ls-title">' + esc(l.title) + '</h1><p class="muted">' + esc(l.sub) + '</p></div>' +
+        '<div class="card ls-body">' + l.blocks.map(lessonBlock).join('') + '</div>' +
+        '<button class="btn primary block" data-eng="lscheck">' + ic('pen') + '확인 문제 풀기 (' + n + '문제)</button>';
+      return;
+    }
+    if (s.phase === 'check') {
+      var q = l.check[s.ci], pk = s.picked[s.ci];
+      root.innerHTML = nav + '<div class="prog"><div class="bar"><i style="width:' + (s.ci / n * 100) + '%"></i></div></div><span class="cnt">' + (s.ci + 1) + ' / ' + n + '</span></div>' +
+        '<div class="card rc-q"><div class="rc-q-h"><span class="rc-qn">확인 ' + (s.ci + 1) + '</span><span class="tag">' + esc(l.title) + '</span></div>' +
+        '<div class="rc-stem">' + fmt(q.s) + '</div>' + choiceList(q, pk, 'lsans') + expBox(q, pk, 'lsnext', s.ci + 1 < n ? '다음 문제' : '강의 마치기') + '</div>';
+      return;
+    }
+    var nx = nextLesson(), pct = Math.round(s.correct / n * 100);
+    var related = l.track === 'p6' ? 'p6' : l.track === 'p7' ? 'p7s' : null;
+    root.innerHTML = '<div class="card result"><p class="whisper">' + TRACKS[l.track][0] + ' · ' + l.no + '강</p><div class="stars">' + [0, 1, 2].map(function (i) { return ic('sparkle', i < (pct >= 90 ? 3 : pct >= 60 ? 2 : 1) ? 'on' : 'off'); }).join('') + '</div>' +
+      '<h2>' + esc(l.title) + ' 완료</h2><div class="score">' + s.correct + '<small> / ' + n + '</small></div><p class="muted">확인 문제 ' + pct + '점 · +' + s.gained + ' xp</p>' +
+      (nx ? '<button class="rc-next" data-eng="lesson" data-id="' + nx.id + '"><span class="exam-ic">' + ic(TRACKS[nx.track][1]) + '</span><span class="q-body"><span class="q-title">다음 강의 · ' + esc(nx.title) + '</span><span class="q-sub">' + TRACKS[nx.track][0] + ' · ' + nx.min + '분</span></span>' + ic('play') + '</button>' : '') +
+      '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn glass" data-eng="lesson" data-id="' + l.id + '">' + ic('rewind') + '다시 보기</button>' +
+      (related && rcPool(related).length ? '<button class="btn sky" data-eng="rcpart" data-k="' + related + '">' + ic('doc') + '실전 세트로 적용</button>' : '') + '</div>' +
+      '<button class="btn glass block" data-eng="lessons" style="font-size:14px">강의 목록</button><button class="btn glass block" data-eng="home" style="font-size:14px">영어 홈으로</button></div>';
+  }
+  function lessonAnswer(i) {
+    var s = eng.lesson, l = LMAP[s.id], q = l.check[s.ci];
+    if (s.picked[s.ci] != null) return;
+    s.picked[s.ci] = i; if (i === q.a) s.correct++;
+    sfx(i === q.a ? 'ok' : 'no'); renderEnglish();
+    var nb = $('nextBtn'); if (nb && nb.scrollIntoView) nb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  function lessonNext() {
+    var s = eng.lesson, l = LMAP[s.id];
+    if (s.ci + 1 < l.check.length) { s.ci++; return renderEnglish(); }
+    var first = !lessonDone(l.id);
+    s.gained = (first ? 15 : 5) + s.correct * 2;
+    data.english.lessons[l.id] = { done: today(), score: [s.correct, l.check.length] };
+    addXP(s.gained); autoLog(s.start, '토익 강의 · ' + l.title);
+    save(); sfx('done'); if (s.correct === l.check.length) confetti(50);
+    s.phase = 'done'; window.scrollTo(0, 0); renderEnglish(); renderHud();
+  }
+  function rcHomeCard() {
+    if (!LESSONS.length && !RC_ALL.length) return '';
+    var nx = nextLesson(), done = LESSONS.filter(function (l) { return lessonDone(l.id); }).length, p = getPlan(today());
+    var solved = RC_ALL.filter(function (s) { return setStat(s.id); }).length;
+    return '<div class="card rc-home"><div class="card-h"><h2>' + ic('lecture') + '강의 · 실전 RC</h2><span class="chip-sm">오늘 ' + (p.rc || 0) + '세트</span></div>' +
+      (LESSONS.length ? (nx ? '<button class="rc-next" data-eng="lesson" data-id="' + nx.id + '"><span class="exam-ic">' + ic('lecture') + '</span><span class="q-body"><span class="q-title">이어서 듣기 · ' + esc(nx.title) + '</span><span class="q-sub">' + TRACKS[nx.track][0] + ' · ' + nx.min + '분 · 강의 ' + done + '/' + LESSONS.length + '</span></span>' + ic('play') + '</button>'
+        : '<p class="muted small">강의 ' + LESSONS.length + '개를 모두 들었어요</p>') : '') +
+      (RC_ALL.length ? '<button class="rc-next" data-eng="rcrec"><span class="exam-ic rc">' + ic('doc') + '</span><span class="q-body"><span class="q-title">오늘의 실전 · Part 6 + Part 7</span><span class="q-sub">추천 2세트 · ' + LV_SHORT[rcTargetLv()] + ' · 푼 세트 ' + solved + '/' + RC_ALL.length + '</span></span>' + ic('play') + '</button>' : '') +
+      '<div class="row" style="margin-top:4px"><button class="btn tiny glass" data-eng="lessons">' + ic('lecture') + '강의 목록</button><button class="btn tiny glass" data-eng="rchub">' + ic('doc') + 'Part 6·7 문제</button></div></div>';
+  }
+  function rcAction(a, b) {
+    if (a === 'lessons') { eng.screen = 'lessons'; window.scrollTo(0, 0); renderEnglish(); return true; }
+    if (a === 'lesson') { startLesson(b.dataset.id); return true; }
+    if (a === 'lscheck') { eng.lesson.phase = 'check'; window.scrollTo(0, 0); sfx('pop'); renderEnglish(); return true; }
+    if (a === 'lsans') { lessonAnswer(+b.dataset.i); return true; }
+    if (a === 'lsnext') { lessonNext(); return true; }
+    if (a === 'rchub') { eng.screen = 'rcHub'; window.scrollTo(0, 0); renderEnglish(); return true; }
+    if (a === 'rctab') { rcHub.tab = b.dataset.f; renderEnglish(); return true; }
+    if (a === 'rclv') { rcHub.lv = b.dataset.f; renderEnglish(); return true; }
+    if (a === 'rcset') { var s = RCMAP[b.dataset.id]; startRC([b.dataset.id], { title: partLabel(s) + ' · ' + setType(s) }); return true; }
+    if (a === 'rcrec') { startRC(recommendPair(), { title: '오늘의 실전 RC' }); return true; }
+    if (a === 'rcpart') { var one = recommendSet(b.dataset.k); startRC(one ? [one.id] : [], { title: '강의 적용 실전' }); return true; }
+    if (a === 'rcwrong') { startRC(wrongSetIds().slice(0, 4), { title: 'RC 오답 다시 풀기' }); return true; }
+    if (a === 'rcretry') { startRC(b.dataset.ids.split(','), { title: '틀린 세트 다시' }); return true; }
+    if (a === 'rcans') { rcAnswer(+b.dataset.i); return true; }
+    if (a === 'rcnext') { rcNext(); return true; }
+    if (a === 'rcnextset') { rcNextSet(); return true; }
+    if (a === 'rcko') { eng.rc.showKo = !eng.rc.showKo; renderEnglish(); return true; }
+    if (a === 'rcexam') {
+      var t = b.dataset.t, ids = [], x;
+      (t === 'monthly' ? ['p6', 'p6', 'p7s', 'p7m'] : ['p6', 'p7s']).forEach(function (k) { x = recommendSet(k, ids); if (x) ids.push(x.id); });
+      startRC(ids, { title: EXAMS[t].name + ' · RC', exam: t }); return true;
+    }
+    return false;
+  }
+
   // ---------- 화면 라우팅 ----------
   function renderEnglish() {
     var root = $('engRoot');
-    var f = { study: renderStudy, quiz: renderQuiz, result: renderResult, book: renderBook, studyDone: renderStudyDone, course: renderCourse, report: renderReport }[eng.screen];
+    var f = { study: renderStudy, quiz: renderQuiz, result: renderResult, book: renderBook, studyDone: renderStudyDone, course: renderCourse, report: renderReport, rc: renderRC, rcResult: renderRCResult, rcHub: renderRCHub, lessons: renderLessons, lesson: renderLesson }[eng.screen];
     (f || renderEngHome)(root);
   }
   function renderEngHome(root) {
@@ -1385,7 +1735,9 @@
       '<div class="eng-steps">' +
       '<div class="eng-step' + (studyDone ? ' done' : '') + '"><div class="h">I. 단어 외우기 ' + (studyDone ? ic('check') : '') + '</div><div class="v">' + learned + ' / ' + tot + '개</div></div>' +
       '<div class="eng-step' + (best != null ? ' done' : '') + '"><div class="h">II. 오늘 시험 ' + (best != null ? ic('check') : '') + '</div><div class="v">' + (best == null ? '아직 안 봤어요' : '최고 ' + best + '점') + '</div></div>' +
+      (RC_ALL.length ? '<div class="eng-step' + (p.rc ? ' done' : '') + '"><div class="h">III. 실전 RC ' + (p.rc ? ic('check') : '') + '</div><div class="v">' + (p.rc ? p.rc + '세트 완료' : '아직 안 풀었어요') + '</div></div>' : '') +
       '</div></div>' +
+      rcHomeCard() +
       // 정기고사
       '<div class="card exam-card"><div class="card-h"><h2>' + ic('calendar') + '정기고사</h2>' +
       (data.english.diag ? '<span class="chip-sm">진단: ' + LV_SHORT[data.english.diag.level] + '</span>' : '<button class="btn tiny pink" data-eng="diag">' + ic('eye') + '실력 진단</button>') + '</div>' +
@@ -1393,7 +1745,7 @@
         var sub = e.locked ? '단어 ' + e.need + '개 학습 후 열려요 (' + e.intro + '/' + e.need + ')'
           : e.doneToday ? '오늘 응시 완료 · ' + Math.round(e.last.score / e.last.total * 100) + '점'
             : e.due ? '지금 응시할 수 있어요 ✦' : 'D-' + e.dueIn + (e.last ? ' · 지난번 ' + Math.round(e.last.score / e.last.total * 100) + '점' : '');
-        return '<div class="exam-row' + (e.due ? ' due' : '') + '"><div class="exam-ic">' + ic(e.type === 'weekly' ? 'moon' : 'star') + '</div><div class="q-body"><div class="q-title">' + e.name + ' <span class="muted small">' + EXAMS[e.type].n + '문항 · 혼합</span></div><div class="q-sub">' + sub + '</div></div>' +
+        return '<div class="exam-row' + (e.due ? ' due' : '') + '"><div class="exam-ic">' + ic(e.type === 'weekly' ? 'moon' : 'star') + '</div><div class="q-body"><div class="q-title">' + e.name + ' <span class="muted small">' + EXAMS[e.type].n + '문항 · 혼합' + (RC_ALL.length ? ' + RC' : '') + '</span></div><div class="q-sub">' + sub + '</div></div>' +
           '<button class="btn tiny ' + (e.due ? 'primary' : 'glass') + '" data-eng="exam" data-t="' + e.type + '"' + (e.locked ? ' disabled' : '') + '>' + (e.due ? '응시' : '미리 보기') + '</button></div>';
       }).join('') + '</div>' +
       '<div class="eng-actions">' +
@@ -1444,7 +1796,7 @@
     var exams = (data.english.exams || []).slice(-10);
     root.innerHTML = '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="home">' + ic('left') + '</button><h2>' + ic('chart') + '실력 리포트</h2></div>' +
       '<div class="card report-top">' + scoreRing(score, 132) +
-      '<div><div class="eng-title">예상 점수 ' + (score == null ? '—' : score + '점') + '</div><p class="muted small">외운 단어 수(난이도별 가중치)와 최근 시험 정답률로 계산한 <b>단어 실력 기준 추정치</b>예요. 실제 토익 점수와는 차이가 있어요.</p>' +
+      '<div><div class="eng-title">예상 점수 ' + (score == null ? '—' : score + '점') + '</div><p class="muted small">외운 단어 수(난이도별 가중치), 최근 시험 정답률, RC 실전(Part 6·7) 정답률로 계산한 <b>추정치</b>예요. 실제 토익 점수와는 차이가 있어요.</p>' +
       (dg ? '<p class="small">진단고사 ' + dg.date + ' · 기초 ' + Math.round(dg.acc[1] * 100) + '% · 중급 ' + Math.round(dg.acc[2] * 100) + '% · 고급 ' + Math.round(dg.acc[3] * 100) + '%</p>' : '') +
       '<button class="btn tiny pink" data-eng="diag">' + ic('eye') + (dg ? '다시 진단하기' : '실력 진단고사 (30문항)') + '</button></div></div>' +
       '<div class="card"><h2>' + ic('star') + '난이도별 숙련도</h2>' + [1, 2, 3].map(function (l) {
@@ -1458,11 +1810,12 @@
         var s = ds[d], att = s.right + s.wrong;
         return '<div class="lv-row"><span>' + ic(dIcon(d)) + ' ' + dName(d) + '</span><div class="bar"><i style="width:' + (s.k / s.t * 100) + '%"></i></div><span class="muted small">' + s.k + '/' + s.t + (att ? ' · ' + Math.round(s.right / att * 100) + '%' : '') + '</span></div>';
       }).join('') + '</div></div>' +
+      (function () { var ts = rcTypeStats(), ks = Object.keys(ts).sort(); return RC_ALL.length ? '<div class="card"><div class="card-h"><h2>' + ic('doc') + 'RC 유형별 정답률</h2><button class="btn tiny glass" data-eng="rchub">문제 목록</button></div>' + (ks.length ? ks.map(function (k) { var b = ts[k]; return '<div class="lv-row"><span>' + esc(k) + '</span><div class="bar"><i style="width:' + (b[1] ? b[0] / b[1] * 100 : 0) + '%"></i></div><span class="muted small">' + b[0] + '/' + b[1] + '</span></div>'; }).join('') : '<p class="muted">Part 6·7 세트를 풀면 유형별 약점을 보여드려요</p>') + '</div>' : ''; })() +
       '<div class="card"><h2>' + ic('calendar') + '정기고사 기록</h2>' + (exams.length ? '<div class="trend">' + exams.map(function (e) {
         var pc = Math.round(e.score / e.total * 100);
         return '<div class="tcol" title="' + esc(e.date + ' ' + (EXAMS[e.type] ? EXAMS[e.type].name : '진단') + ' ' + pc + '점') + '"><i style="height:' + pc + '%"></i><span>' + e.date.slice(5).replace('-', '/') + '</span></div>';
       }).join('') + '</div><ul class="entries">' + exams.slice().reverse().map(function (e) {
-        return '<li><span class="e-ic" style="--c:#d6c2ff">' + ic(e.type === 'monthly' ? 'star' : e.type === 'diag' ? 'eye' : 'moon') + '</span><div class="body"><div class="t">' + (EXAMS[e.type] ? EXAMS[e.type].name : '실력 진단고사') + ' · ' + e.score + '/' + e.total + '</div><div class="note">' + prettyDate(e.date) + (e.est ? ' · 예상 ' + e.est + '점' : '') + '</div></div></li>';
+        return '<li><span class="e-ic" style="--c:#d6c2ff">' + ic(e.type === 'monthly' ? 'star' : e.type === 'diag' ? 'eye' : 'moon') + '</span><div class="body"><div class="t">' + (EXAMS[e.type] ? EXAMS[e.type].name : '실력 진단고사') + ' · ' + e.score + '/' + e.total + (e.rc ? ' · RC ' + e.rc[0] + '/' + e.rc[1] : '') + '</div><div class="note">' + prettyDate(e.date) + (e.est ? ' · 예상 ' + e.est + '점' : '') + '</div></div></li>';
       }).join('') + '</ul>' : '<p class="muted">아직 정기고사 기록이 없어요</p>') + '</div>';
   }
 
@@ -1675,6 +2028,7 @@
       '<div class="row" style="justify-content:center;margin-top:14px">' +
       (q.wrongs.length ? '<button class="btn butter" data-eng="retry">' + ic('rewind') + '틀린 것만 다시</button>' : '') +
       '<button class="btn sky" data-eng="report">' + ic('chart') + '실력 리포트</button></div>' +
+      ((q.src === 'weekly' || q.src === 'monthly') && RC_ALL.length ? '<button class="btn primary block" data-eng="rcexam" data-t="' + q.src + '">' + ic('doc') + 'RC 실전 파트 이어서 풀기 · Part 6·7 ' + (q.src === 'monthly' ? 4 : 2) + '세트</button>' : '') +
       '<button class="btn glass block" data-eng="home" style="font-size:14px">영어 홈으로</button></div>';
   }
 
@@ -1734,6 +2088,7 @@
     if (!b) { var row = ev.target.closest('.wrow'); if (row) row.classList.toggle('open'); return; }
     if (b.disabled) return;
     var a = b.dataset.eng, c = data.settings.course;
+    if (rcAction(a, b)) return;
     if (a === 'speak') { ev.stopPropagation(); speak(b.dataset.w); return; }
     if (a === 'star') { ev.stopPropagation(); var w0 = b.dataset.w; if (data.english.stars[w0]) delete data.english.stars[w0]; else data.english.stars[w0] = 1; save(); sfx('pop'); b.classList.toggle('on', !!data.english.stars[w0]); return; }
     if (a === 'flip') { eng.study.flipped = !eng.study.flipped; $('flash').classList.remove('in'); $('flash').classList.toggle('flip', eng.study.flipped); sfx('flip'); return; }
@@ -1776,6 +2131,10 @@
       if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); $('flash').click(); }
       else if (ev.key === 'ArrowRight') studyAnswer(true);
       else if (ev.key === 'ArrowLeft') studyAnswer(false);
+    } else if (eng.screen === 'rc' || (eng.screen === 'lesson' && eng.lesson && eng.lesson.phase === 'check')) {
+      var k = parseInt(ev.key, 10), nb = $('nextBtn');
+      if (k >= 1 && k <= 4 && !nb) { var bb = document.querySelectorAll('.rc-choice')[k - 1]; if (bb && !bb.disabled) bb.click(); }
+      else if (ev.key === 'Enter' && nb) { ev.preventDefault(); nb.click(); }
     } else if (eng.screen === 'quiz' && eng.quiz.items[eng.quiz.i] && eng.quiz.items[eng.quiz.i].mode !== 'spell') {
       var n = parseInt(ev.key, 10);
       if (n >= 1 && n <= 4 && !eng.quiz.answered) { var b = document.querySelectorAll('.choice')[n - 1]; if (b) b.click(); }
