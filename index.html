@@ -47,6 +47,8 @@
 
     <button type="button" class="home-add" id="homeAdd"><span class="ha-ic"><i data-ic="pen"></i></span><span class="ha-t"><b>기록 남기기</b><small id="homeAddSub">운동·공부·영어 시간을 바로 적어요</small></span><span class="ha-plus" aria-hidden="true">+</span></button>
     </div><div class="home-right">
+    <div id="installBanner"></div>
+    <div class="card att-card" id="attCard"></div>
     <div id="homeWeek"></div>
 
     <div class="card">
@@ -165,11 +167,16 @@
       <div class="set-row"><span>단어 카드 넘길 때 발음 자동 재생</span><label class="switch"><input type="checkbox" id="setAutoSpeak"><i></i></label></div>
       <p class="muted small">새 단어 수 변경은 내일 단어부터 적용돼요. 오늘 더 하고 싶으면 영어 탭의 "새 단어 +10개"를 눌러요.</p>
     </div>
+    <div class="card" id="installCard">
+      <h2><i data-ic="download"></i>앱 설치 (다운로드)</h2>
+      <div id="installBody"></div>
+    </div>
     <div class="card">
-      <h2><i data-ic="moon"></i>알림 · 휴대폰</h2>
+      <h2><i data-ic="moon"></i>알림 · 알람</h2>
       <div class="set-row"><span>앱 알림 (루틴 시간 · 단어 리마인더)<br><small class="muted" id="notiState"></small></span><button class="btn small primary" id="notiBtn">알림 허용</button></div>
+      <div class="set-row"><span>출석 체크 알림 시간<br><small class="muted">그 시간까지 출석 안 했으면 알려줘요</small></span><input type="time" class="field" id="setAttTime" style="width:auto"></div>
       <div class="set-row"><span>매일 단어 공부 리마인더 시간</span><input type="time" class="field" id="setWordTime" style="width:auto"></div>
-      <div class="set-row"><span>휴대폰 캘린더에 루틴 알림 넣기<br><small class="muted">.ics 파일을 휴대폰에서 열면 캘린더가 정해진 시간마다 알려줘요 (앱을 꺼도 울려요)</small></span><button class="btn small sky" id="icsBtn"><i data-ic="calendar"></i>캘린더 파일</button></div>
+      <div class="set-row"><span>휴대폰 캘린더 알람 (가장 확실해요)<br><small class="muted">루틴·출석·단어 알림을 .ics 파일로 받아 휴대폰에서 열면, 앱을 완전히 꺼 둬도 캘린더가 정해진 시간에 울려요</small></span><button class="btn small sky" id="icsBtn"><i data-ic="calendar"></i>캘린더 파일</button></div>
       <div class="set-row"><span>Google 캘린더 연결<br><small class="muted">루틴 관리에서 루틴 옆 캘린더 아이콘을 누르면 매주 반복 일정으로 들어가요</small></span><span class="row"><button class="btn small glass" id="gcalAllBtn"><i data-ic="calendar"></i>루틴 보내기</button><button class="btn small glass" id="gcalWordBtn"><i data-ic="letters"></i>단어 알림</button></span></div>
       <p class="muted small" id="pwaInfo"></p>
       <button class="btn small glass" id="notiTest"><i data-ic="sparkle"></i>알림 테스트</button>
@@ -241,6 +248,16 @@
 <dialog id="onbDlg" class="onb-dlg" aria-label="시작 안내">
   <div id="onbBody"></div>
   <div class="onb-foot"><button type="button" class="btn glass" id="onbBack">이전</button><button type="button" class="btn primary" id="onbNext">다음</button></div>
+</dialog>
+
+<dialog id="attDlg" class="wide-dlg" aria-label="이번 달 출석부">
+  <div id="attBody"></div>
+  <form method="dialog" class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn glass">닫기</button></form>
+</dialog>
+
+<dialog id="instDlg" aria-label="앱 설치 방법">
+  <div id="instBody"></div>
+  <form method="dialog" class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn glass" data-inst="copy" type="button">주소 복사</button><button class="btn primary">확인</button></form>
 </dialog>
 
 <dialog id="editDlg">

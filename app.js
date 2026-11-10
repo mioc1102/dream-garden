@@ -125,7 +125,8 @@
     d.english.exams = d.english.exams || [];
     d.english.custom = d.english.custom || [];
     d.english.lessons = d.english.lessons || {};
-    if (d.settings && d.settings.onboarded == null) d.settings.onboarded = !!((d.entries && d.entries.length) || Object.keys(d.english.words).length);
+    d.attendance = d.attendance || {};
+    (d.routines || []).forEach(function (r) { if (r.createdAt) return; var f = null; (d.entries || []).forEach(function (e) { if (e.routineId === r.id && (!f || e.date < f)) f = e.date; }); r.createdAt = f ? parseYmd(f).getTime() : Date.now(); });
     d.english.rc = d.english.rc || {};
     d.english.rc.sets = d.english.rc.sets || {}; d.english.rc.qs = d.english.rc.qs || {}; d.english.rc.log = d.english.rc.log || [];
     d.routines = d.routines || [];
@@ -135,14 +136,17 @@
     d.settings = Object.assign({ dailyWords: 20, sound: true, autoLog: true, autoSpeak: false, sparkle: true }, d.settings || {});
     if (!d.settings.course) d.settings.course = { level: 'auto', domains: [] };
     if (d.settings.wordTime === undefined) d.settings.wordTime = '21:00';
+    if (d.settings.attTime === undefined) d.settings.attTime = '09:00';
+    if (d.settings.onboarded == null) d.settings.onboarded = !!((d.entries && d.entries.length) || Object.keys(d.english.words).length);
     d.version = 3;
     return d;
   }
   function load() {
     try {
-      var d = JSON.parse(localStorage.getItem(KEY));
+      var raw = localStorage.getItem(KEY), d = JSON.parse(raw);
       if (valid(d)) return normalize(d);
-    } catch (e) { /* ignore */ }
+      if (raw) localStorage.setItem(KEY + '.bak-' + Date.now(), raw);
+    } catch (e) { try { var r2 = localStorage.getItem(KEY); if (r2) localStorage.setItem(KEY + '.bak-' + Date.now(), r2); } catch (e2) { /* 저장 공간 부족 */ } }
     return normalize(defaultData());
   }
   var data = load();
@@ -660,6 +664,9 @@
     $('fx').innerHTML = '';
     render(); syncFab();
   }
+  document.addEventListener('keydown', function (ev) { // div/li 버튼도 Enter·Space로
+    if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.getAttribute && ev.target.getAttribute('role') === 'button' && !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); ev.target.click(); }
+  }, true);
   document.addEventListener('click', function (ev) { var g = ev.target.closest('[data-go]'); if (g) { sfx('pop'); go(g.dataset.go); } });
   $('tabs').addEventListener('click', function (ev) {
     var b = ev.target.closest('button'); if (!b) return;
@@ -814,7 +821,7 @@
     r.minutes = Math.max(1, parseInt($('rtMin').value, 10) || 30); r.note = $('rtNote').value.trim(); r.remind = $('rtRemind').checked;
     r.days = rtDays.slice().sort(); r.parts = c && c.parts ? rtParts.slice() : [];
     data.routines = data.routines || [];
-    if (!rtEdit) data.routines.push(r);
+    if (!rtEdit) { r.createdAt = Date.now(); data.routines.push(r); }
     save(); sfx('save'); toast('✧ 루틴 "' + r.name + '" 저장');
     renderRtList(); rtFormReset(); render();
     if (r.remind && 'Notification' in window && Notification.permission === 'default') setTimeout(askNotify, 400);
@@ -828,7 +835,10 @@
     return Notification.permission;
   }
   function askNotify() {
-    if (!('Notification' in window)) { toast('이 브라우저는 알림을 지원하지 않아요 — 캘린더 파일을 써주세요'); return; }
+    if (!('Notification' in window)) {
+      if (platform() === 'ios' && !isStandalone()) { openInstallGuide('iPhone은 홈 화면에 추가한 앱에서만 알림을 켤 수 있어요. 먼저 설치한 뒤 설정에서 알림 허용을 눌러 주세요.'); return; }
+      toast('이 브라우저는 알림을 지원하지 않아요 — 캘린더 알람을 써주세요'); return;
+    }
     Notification.requestPermission().then(function (p) {
       toast(p === 'granted' ? '✧ 알림이 켜졌어요' : '알림이 꺼져 있어요 — 브라우저 설정에서 허용해 주세요');
       if (currentView === 'settings') renderSettings();
@@ -837,11 +847,12 @@
   function notify(title, body, tag) {
     if (notiState() !== 'granted') return false;
     var opt = { body: body, tag: tag, icon: 'assets/icon-192.png', badge: 'assets/icon-192.png', renotify: true };
-    try {
-      if (swReg && swReg.showNotification) swReg.showNotification(title, opt);
-      else new Notification(title, opt);
-      return true;
-    } catch (e) { return false; }
+    function plain() { try { new Notification(title, opt); } catch (e) { /* 안드로이드는 서비스 워커로만 가능 */ } }
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      var ready = swReg ? Promise.resolve(swReg) : Promise.race([navigator.serviceWorker.ready, new Promise(function (r, j) { setTimeout(j, 4000); })]);
+      ready.then(function (r) { return r.showNotification(title, opt); }).catch(plain);
+    } else plain();
+    return true;
   }
   function checkReminders() {
     var now = new Date(), nowM = now.getHours() * 60 + now.getMinutes(), t = today();
@@ -863,11 +874,31 @@
       var tot = p ? p.fresh.length + p.review.length : 1, lrn = p ? p.learned.length : 0;
       if (d2 >= 0 && d2 <= 120 && lrn < tot) { nt[t + '|words'] = 1; fired = true; notify('✧ 오늘의 토익 단어', '아직 ' + (tot - lrn) + '개 남았어요. 구름 요정이 기다리고 있어요', t + '|words'); }
     }
+    var at = data.settings.attTime;
+    if (at && !nt[t + '|att'] && !attended(t)) {
+      var d3 = nowM - hm2min(at);
+      if (d3 >= 0 && d3 <= 180) { nt[t + '|att'] = 1; fired = true; notify('✧ 오늘 출석 체크', '정원에 들러 출석하고 오늘 루틴을 확인해요', t + '|att'); }
+    }
     if (fired) save();
   }
   setInterval(checkReminders, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { checkReminders(); if (today() !== lastDay) { lastDay = today(); $('addDate').value = lastDay; render(); } } });
 
   // ---------- 캘린더(.ics) 내보내기 ----------
+  function saveFile(name, text, mime, okMsg) {
+    var blob = new Blob([text], { type: mime + ';charset=utf-8' });
+    try {
+      var f = new File([blob], name, { type: mime });
+      if (platform() === 'ios' && navigator.canShare && navigator.canShare({ files: [f] })) {
+        navigator.share({ files: [f], title: name }).then(function () { toast(okMsg); }, function (e) { if (e && e.name !== 'AbortError') toast('저장하지 못했어요 · 다시 시도해 주세요'); });
+        return;
+      }
+    } catch (e) { /* 공유 미지원 → 다운로드 */ }
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+    toast(okMsg);
+  }
   function icsEsc(s) { return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
   function icsFold(line) {
     var enc = new TextEncoder(), out = [], cur = '', bytes = 0;
@@ -894,33 +925,34 @@
         '✧ ' + r.name, catName(r.categoryId) + ' ' + fmtMin(r.minutes) + ((r.parts || []).length ? ' · ' + r.parts.map(function (p) { return PNAME[p]; }).join('·') : '') + (r.note ? ' · ' + r.note : '') + ' — 꿈속 정원');
     });
     if (data.settings.wordTime) ev('words', today(), data.settings.wordTime, 15, 'FREQ=DAILY', '✧ 오늘의 토익 단어', '하루 ' + data.settings.dailyWords + '개 단어 공부 — 꿈속 정원');
+    if (data.settings.attTime) ev('attendance', today(), data.settings.attTime, 5, 'FREQ=DAILY', '✧ 꿈속 정원 출석 체크', '정원에 들러 출석하고 오늘 루틴을 확인해요 — ' + appUrl());
     L.push('END:VCALENDAR');
-    return { text: L.map(icsFold).join('\r\n') + '\r\n', count: rs.length + (data.settings.wordTime ? 1 : 0) };
+    return { text: L.map(icsFold).join('\r\n') + '\r\n', count: rs.length + (data.settings.wordTime ? 1 : 0) + (data.settings.attTime ? 1 : 0) };
   }
   $('icsBtn').addEventListener('click', function () {
     var r = buildICS();
-    if (!r.count) { toast('알림 켜진 루틴이나 단어 리마인더 시간이 없어요'); return; }
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([r.text], { type: 'text/calendar;charset=utf-8' })); a.download = 'dream-garden-routines.ics';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-    toast('✧ 캘린더 파일 저장 — 휴대폰에서 열어 캘린더에 추가해요 (' + r.count + '개)');
+    if (!r.count) { toast('알림 켜진 루틴이나 출석·단어 알림 시간이 없어요'); return; }
+    saveFile('dream-garden-routines.ics', r.text, 'text/calendar', '✧ 캘린더 파일 저장 — 열어서 캘린더에 추가해요 (' + r.count + '개)');
   });
   $('notiBtn').addEventListener('click', askNotify);
   $('notiTest').addEventListener('click', function () {
     if (notiState() !== 'granted') { askNotify(); return; }
     notify('✧ 꿈속 정원', '알림이 잘 도착했어요. 루틴 시간에 이렇게 알려드릴게요', 'test');
   });
+  $('setAttTime').addEventListener('change', function () { data.settings.attTime = this.value; save(); toast(this.value ? '✧ 매일 ' + this.value + '까지 출석 안 하면 알려드려요' : '출석 알림 끔'); });
   $('setWordTime').addEventListener('change', function () { data.settings.wordTime = this.value; save(); toast(this.value ? '✧ 매일 ' + this.value + '에 단어 리마인더' : '단어 리마인더 끔'); });
   function renderNotiSettings() {
     var s = notiState();
-    $('notiState').textContent = s === 'granted' ? '허용됨 ✓ (앱이 열려 있거나 백그라운드일 때 알림)' : s === 'denied' ? '차단됨 — 브라우저 사이트 설정에서 허용해 주세요' : s === 'unsupported' ? '이 브라우저는 알림 미지원' : '아직 허용 안 함';
-    $('notiBtn').hidden = s === 'granted';
+    $('notiState').textContent = s === 'granted' ? '허용됨 ✓ (앱을 열어 둔 동안 알림 · 꺼져 있을 땐 캘린더 알람)' : s === 'denied' ? '차단됨 — 브라우저 사이트 설정에서 허용해 주세요' : s === 'unsupported' ? (platform() === 'ios' && !isStandalone() ? 'iPhone은 앱 설치 후 알림을 켤 수 있어요' : '이 브라우저는 알림 미지원 — 캘린더 알람을 써주세요') : '아직 허용 안 함';
+    $('notiBtn').hidden = s === 'granted' || (s === 'unsupported' && !(platform() === 'ios' && !isStandalone()));
+    $('notiBtn').textContent = s === 'unsupported' ? '설치 방법' : '알림 허용';
     $('setWordTime').value = data.settings.wordTime || '';
+    $('setAttTime').value = data.settings.attTime || '';
+    renderInstall();
     var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
     $('pwaInfo').innerHTML = location.protocol === 'file:'
       ? '지금은 PC 파일로 열려 있어요. 휴대폰 앱처럼 쓰려면 웹에 올린 주소를 휴대폰 브라우저로 열고 "홈 화면에 추가"를 하면 돼요. 앱을 꺼둬도 확실히 울리게 하려면 위의 캘린더 파일을 쓰세요.'
-      : standalone ? '✓ 홈 화면 앱으로 실행 중이에요' : '휴대폰 브라우저 메뉴에서 "홈 화면에 추가"를 하면 앱처럼 쓸 수 있어요';
+      : '앱 알림은 앱이 열려 있거나 백그라운드에 있을 때 와요. 휴대폰이 앱을 완전히 종료하면 못 받을 수 있으니, 꼭 받아야 하는 알람은 위의 캘린더 알람도 함께 켜 두세요.';
   }
 
   // ================= Google 캘린더 · Claude 가져오기 =================
@@ -1018,7 +1050,7 @@
     return plan;
   }
   var pendingImport = null;
-  function previewImport(payload) {
+  function previewImport(payload, fromLink) {
     var plan = buildImportPlan(payload), n = plan.routines.length + plan.entries.length + plan.words.length;
     if (!n) { toast('가져올 일정이 없어요'); return; }
     pendingImport = plan;
@@ -1027,7 +1059,8 @@
       plan.routines.map(function (r) { return '<li><span class="tag rev">루틴</span> <b>' + esc(r.name) + '</b><div class="note">' + (r.days.length === 7 ? '매일' : r.days.map(function (d) { return DAYS[d]; }).join(' ')) + ' ' + r.time + ' · ' + esc(catLabel(r.categoryId)) + ' ' + fmtMin(r.minutes) + (r.parts.length ? ' · ' + r.parts.map(function (p) { return PNAME[p]; }).join('·') : '') + (r.note ? ' · ' + esc(r.note) : '') + '</div></li>'; }).join('') +
       plan.entries.map(function (e) { return '<li><span class="tag ok">기록</span> <b>' + esc(catLabel(e.categoryId)) + ' ' + fmtMin(e.minutes) + '</b><div class="note">' + prettyDate(e.date) + (e.note ? ' · ' + esc(e.note) : '') + '</div></li>'; }).join('') +
       plan.words.map(function (w) { return '<li><span class="tag new">단어</span> <b>' + esc(w.w) + '</b> ' + esc(w.m) + '</li>'; }).join('') +
-      (plan.newCats.length ? '<li class="muted small">새 분야도 만들어요: ' + plan.newCats.map(function (c) { return esc(c.name); }).join(', ') + '</li>' : '');
+      (plan.newCats.length ? '<li class="muted small">새 분야도 만들어요: ' + plan.newCats.map(function (c) { return esc(c.name); }).join(', ') + '</li>' : '') +
+      (platform() === 'ios' && !isStandalone() && fromLink ? '<li class="imp-warn">iPhone에서는 Safari와 홈 화면 앱의 저장 공간이 따로예요. 홈 화면 앱에 넣으려면 이 창을 닫고, 앱을 열어 설정 → Claude로 일정 넣기 칸에 코드를 붙여넣어 주세요.</li>' : '');
     $('impDlg').showModal();
   }
   $('impDlg').addEventListener('close', function () {
@@ -1047,7 +1080,7 @@
     var m = location.hash.match(/import=([A-Za-z0-9_\-]+)/);
     if (!m) return;
     history.replaceState(null, '', location.pathname + location.search);
-    try { previewImport(JSON.parse(b64urlDecode(m[1]))); } catch (e) { toast('가져오기 링크가 올바르지 않아요'); }
+    try { previewImport(JSON.parse(b64urlDecode(m[1])), true); } catch (e) { toast('가져오기 링크가 올바르지 않아요'); }
   }
   window.addEventListener('hashchange', checkHashImport);
   $('impBtn').addEventListener('click', function () {
@@ -1091,6 +1124,7 @@
     if (tot) q.push({ ic: 'cards', color: '#9ee3d4', title: '오늘의 토익 단어 외우기', sub: p.learned.length + ' / ' + tot + '개', pct: p.learned.length / tot, done: p.learned.length >= tot, eng: 'study' });
     var best = bestScore(p);
     ['weekly', 'monthly'].forEach(function (k) { var e = examInfo(k); if (e.due || e.doneToday) q.push({ ic: k === 'weekly' ? 'moon' : 'star', color: '#d6c2ff', title: e.name, sub: e.doneToday ? '응시 완료' : '오늘 열렸어요', pct: e.doneToday ? 1 : 0, done: !!e.doneToday, exam: k }); });
+    q.unshift({ ic: 'check', color: '#ffd36e', title: '출석 체크', sub: attended(t) ? '출석 완료 · ' + attStreak() + '일 연속' : '눌러서 출석하기', pct: attended(t) ? 1 : 0, done: attended(t), att: true });
     q.push({ ic: 'pen', color: '#ffc3e4', title: '토익 단어 시험 보기', sub: best == null ? '아직 안 봤어요' : '최고 ' + best + '점', pct: best == null ? 0 : 1, done: best != null, eng: 'quiz' });
     return q;
   }
@@ -1099,7 +1133,7 @@
     var done = quests.filter(function (x) { return x.done; }).length;
     $('questCount').innerHTML = todayRings() + done + ' / ' + quests.length + ' 완료';
     $('quests').innerHTML = quests.map(function (x, i) {
-      return '<li class="quest' + (x.done ? ' done' : '') + '" data-qi="' + i + '" style="--c:' + esc(x.color) + '">' +
+      return '<li class="quest' + (x.done ? ' done' : '') + '" role="button" tabindex="0" data-qi="' + i + '" style="--c:' + esc(x.color) + '">' +
         '<div class="q-ic">' + ic(x.ic) + '</div><div class="q-body"><div class="q-title">' + esc(x.title) + '</div>' +
         '<div class="q-bar"><i style="width:' + (x.pct * 100) + '%"></i></div><div class="q-sub">' + esc(x.sub) + '</div></div>' +
         ic('sparkle', 'q-stamp fill') + '</li>';
@@ -1111,8 +1145,10 @@
       else if (q.eng === 'quiz') { eng.screen = 'home'; go('english'); startQuiz('today', 'mix'); }
       else if (q.exam) { eng.screen = 'home'; go('english'); if (!q.done) startQuiz(q.exam, 'mix'); }
       else if (q.cat) openAdd(q.cat);
+      else if (q.att && !q.done) checkIn(ev);
     };
     renderGarden(quests);
+    renderAttCard(); renderInstall();
     var dw = new Date().getDay(); $('homeWeek').innerHTML = dw === 0 || dw === 1 ? weekReport() : '';
     renderRoutineToday();
     renderChips();
@@ -1146,8 +1182,9 @@
     data.entries.push(en); selParts = [];
     save();
     if ($('addDlg').open) $('addDlg').close();
-    $('addMin').value = ''; $('addNote').value = '';
-    resetTimer();
+    var fromTimer = $('addMin').dataset.timer === String(min);
+    $('addMin').value = ''; $('addNote').value = ''; $('addMin').dataset.timer = ''; $('addDate').value = today();
+    if (fromTimer) resetTimer();
     var sb = ev.submitter, r = sb && sb.getBoundingClientRect();
     sfx('save'); floatXP(min, r ? { clientX: r.left + r.width / 2, clientY: r.top } : null);
     var c = cat(selCat), mins = (aggregate()[selCat] || {})[today()] || 0;
@@ -1178,7 +1215,7 @@
     if (timer.start) {
       timer.acc = elapsed(); timer.start = null;
       var m = Math.max(1, Math.round(timer.acc / 60000));
-      $('addMin').value = m;
+      $('addMin').value = m; $('addMin').dataset.timer = String(m);
       toast('✧ ' + fmtMin(m) + ' 입력됨 — 기록하기를 눌러요');
     } else timer.start = Date.now();
     sfx('pop'); saveTimer(); runTick();
@@ -1299,15 +1336,17 @@
   function makePlan(date) {
     var st = data.english.words, n = data.settings.dailyWords;
     var fresh = freshCandidates().slice(0, n).map(function (x) { return x.w; });
-    var spaced = [];
-    [1, 3, 7, 14, 30].forEach(function (k) {
-      var d = addDays(date, -k);
-      W.forEach(function (x) { var s = st[x.w]; if (s && s.intro === d && spaced.indexOf(x.w) < 0) spaced.push(x.w); });
+    var spaced = [], K = [1, 3, 7, 14, 30];
+    W.forEach(function (x) { // 가장 최근 복습 시점(1·3·7·14·30일)이 지났는데 그 뒤로 본 적이 없으면 복습 대상
+      var s = st[x.w]; if (!s || !s.intro || s.intro >= date) return;
+      var age = daysBetween(s.intro, date), k = K.filter(function (v) { return v <= age; }).pop();
+      if (k && (s.seen || s.intro) < addDays(s.intro, k)) spaced.push([k, x.w]);
     });
+    spaced = spaced.sort(function (a, b) { return a[0] - b[0]; }).map(function (v) { return v[1]; });
     var wrong = W.filter(function (x) { return st[x.w] && st[x.w].wrongNote; })
       .sort(function (a, b) { return st[b.w].wrong - st[a.w].wrong; }).map(function (x) { return x.w; });
     var review = [];
-    wrong.concat(spaced).forEach(function (w) { if (review.indexOf(w) < 0 && fresh.indexOf(w) < 0) review.push(w); });
+    wrong.slice(0, 8).concat(spaced, wrong.slice(8)).forEach(function (w) { if (review.indexOf(w) < 0 && fresh.indexOf(w) < 0) review.push(w); });
     return { fresh: fresh, review: review.slice(0, 15), learned: [], tests: [] };
   }
   function getPlan(date) {
@@ -1845,7 +1884,7 @@
     var s = data.english.words[x.w];
     var t = ok ? '<span class="tag ok">✓</span>' : tag === 'new' ? '<span class="tag new">new</span>' : tag === 'rev' ? '<span class="tag rev">복습</span>'
       : s && s.wrongNote ? '<span class="tag wrong">오답</span>' : s && s.intro ? '<span class="tag ok">학습</span>' : '';
-    return '<li class="wrow" data-w="' + esc(x.w) + '"><div class="wline"><span class="ww">' + esc(x.w) + (data.english.stars[x.w] ? ic('star', 'wstar') : '') + '</span>' +
+    return '<li class="wrow" role="button" tabindex="0" aria-label="' + esc(x.w + ' ' + x.m) + '" data-w="' + esc(x.w) + '"><div class="wline"><span class="ww">' + esc(x.w) + (data.english.stars[x.w] ? ic('star', 'wstar') : '') + '</span>' +
       '<span class="wm">' + esc(x.m) + '</span>' + t + spkBtn(x.w) + '</div>' +
       '<div class="wex"><div class="wmeta">' + lvDots(x.lv) + '<span class="tag">' + POS[x.p] + '</span><span class="muted small">' + ic(dIcon(x.d)) + dName(x.d) + ' · ' + (LV_SHORT[x.lv] || '') + (s && s.wrong ? ' · 오답 ' + s.wrong + '회' : '') + '</span>' + starBtn(x.w) + '</div>' +
       (x.ex ? '<p class="ex-en">' + exHTML(x.ex) + '</p><p class="ex-ko">' + esc(x.exk) + '</p>' : '<p class="muted small">예문이 없어요</p>') +
@@ -1915,7 +1954,7 @@
     root.innerHTML =
       '<div class="eng-nav"><button class="btn tiny glass icon-only" data-eng="home" title="나가기">' + ic('x') + '</button>' +
       '<div class="prog"><div class="bar"><i style="width:' + (s.done / s.total * 100) + '%"></i></div></div><span class="cnt">' + s.done + ' / ' + s.total + '</span></div>' +
-      '<div class="flash-wrap"><div class="flash in' + (s.flipped ? ' flip' : '') + '" id="flash" data-eng="flip">' +
+      '<div class="flash-wrap"><div class="flash in' + (s.flipped ? ' flip' : '') + '" id="flash" data-eng="flip" role="button" tabindex="0" aria-label="카드 뒤집기">' +
       '<div class="face front"><span class="corner">' + (isNew ? '<span class="tag new">new</span>' : '<span class="tag rev">복습</span>') + (s.again[w] ? ' <span class="tag wrong">다시</span>' : '') + ' ' + lvDots(x.lv) + '</span>' +
       '<div class="corner-r">' + starBtn(x.w) + spkBtn(x.w) + '</div>' +
       '<div class="word">' + esc(x.w) + '</div><span class="tag">' + POS[x.p] + ' · ' + dName(x.d) + '</span><div class="hint">tap to remember ✧</div></div>' +
@@ -1933,6 +1972,7 @@
       if (p.learned.indexOf(w) < 0) p.learned.push(w);
       var st = wstate(w);
       if (!st.intro) { st.intro = today(); s.gained += 2; }
+      st.seen = today();
       sfx('ok');
     } else { s.queue.push(w); s.again[w] = true; sfx('flip'); }
     s.flipped = false; s.spoken = false; save();
@@ -1956,7 +1996,7 @@
   }
 
   // ---------- 시험 ----------
-  var SRC_NAME = { today: '오늘 단어', wrong: '오답노트', random: '누적 랜덤', retry: '틀린 문제 재도전', weak: '약점 집중', dom: '분야 집중', star: '북마크', list: '단어장', weekly: '주간 정기고사', monthly: '월간 모의고사', diag: '실력 진단고사' };
+  var SRC_NAME = { today: '오늘 단어', wrong: '오답노트', random: '누적 랜덤', retry: '틀린 문제 재도전', weak: '약점 집중', dom: '분야 집중', star: '북마크', list: '단어장', weekly: '주간 정기고사', monthly: '월간 모의고사', diag: '실력 진단고사', preview: '정기고사 미리 보기' };
   var MODE_NAME = { choice: '4지선다', spell: '스펠링', blank: 'Part 5 빈칸', listen: '듣기', mix: '혼합' };
   function pickMode(mode, x) {
     if (mode === 'mix') { var r = Math.random(); mode = r < .35 ? 'choice' : r < .65 ? 'blank' : r < .85 ? 'listen' : 'spell'; }
@@ -2030,8 +2070,9 @@
     }
   }
   function recordAnswer(w, ok) {
-    var st = wstate(w);
-    if (!st.intro) st.intro = today();
+    var st = wstate(w), pl = data.english.plans[today()];
+    if (!st.intro && pl && (pl.fresh.indexOf(w) >= 0 || pl.review.indexOf(w) >= 0)) st.intro = today();
+    if (st.intro) st.seen = today();
     if (ok) { st.right++; if (st.wrongNote) { st.fix = (st.fix || 0) + 1; if (st.fix >= 2) { st.wrongNote = false; st.fix = 0; } } }
     else { st.wrong++; st.wrongNote = true; st.fix = 0; }
   }
@@ -2178,7 +2219,7 @@
     if (a === 'again') return studyAnswer(false, ev);
     if (a === 'study') return startStudy();
     if (a === 'quiz') return startQuiz(b.dataset.src, b.dataset.mode, null, { d: b.dataset.d });
-    if (a === 'exam') return startQuiz(b.dataset.t, 'mix');
+    if (a === 'exam') { var ei = examInfo(b.dataset.t); if (ei.due) return startQuiz(b.dataset.t, 'mix'); var pw = examWords(b.dataset.t).slice(0, 10); if (!pw.length) { toast('아직 미리 볼 단어가 없어요'); return; } toast(ei.name + ' 미리 보기 · 정식 응시는 D-day에 열려요'); return startQuiz('preview', 'mix', pw, { title: ei.name + ' 미리 보기' }); }
     if (a === 'diag') return startQuiz('diag', 'choice');
     if (a === 'ans') { var q = eng.quiz, i = +b.dataset.i; return answer(q.items[q.i].choices[i].w === q.items[q.i].x.w, ev, i); }
     if (a === 'giveup') return answer(false, ev);
@@ -2265,7 +2306,7 @@
     for (i = 1; i <= n; i++) {
       var k = ymd(new Date(y, m, i)), v = days[k] || 0, r = v / max;
       var bg = v ? 'radial-gradient(circle at 35% 30%, rgba(255,255,255,.85), transparent 50%), ' + hexToRgba(color, 0.35 + 0.65 * r) : '';
-      html += '<div class="cal-cell' + (k === t ? ' today' : '') + (k === calSel ? ' sel' : '') + '" data-d="' + k + '" style="' + (bg ? 'background:' + bg + ';' + (k === t || k === calSel ? '' : 'box-shadow:0 0 ' + Math.round(6 + r * 14) + 'px ' + hexToRgba(color, .7) + ';') : '') + '">' +
+      html += '<div class="cal-cell' + (k === t ? ' today' : '') + (k === calSel ? ' sel' : '') + '" role="button" tabindex="0" aria-label="' + prettyDate(k) + '" data-d="' + k + '" style="' + (bg ? 'background:' + bg + ';' + (k === t || k === calSel ? '' : 'box-shadow:0 0 ' + Math.round(6 + r * 14) + 'px ' + hexToRgba(color, .7) + ';') : '') + '">' +
         (metDay(k) ? '<span class="ok">✦</span>' : '') + '<span>' + i + '</span>' + (v ? '<span class="m">' + (v >= 60 ? (v / 60).toFixed(1).replace('.0', '') + 'h' : v + 'm') + '</span>' : '') + '</div>';
     }
     $('calGrid').innerHTML = html;
@@ -2394,8 +2435,9 @@
     var b = ev.target.closest('[data-act="delcat"]'); if (!b) return;
     var id = b.closest('li').dataset.id, c = cat(id);
     if (data.categories.length <= 1) { toast('분야는 최소 1개 필요해요'); return; }
-    var n = data.entries.filter(function (e) { return e.categoryId === id; }).length;
-    if (n && !confirm('"' + c.name + '" 분야와 기록 ' + n + '개가 모두 삭제됩니다. 계속할까요?')) return;
+    var n = data.entries.filter(function (e) { return e.categoryId === id; }).length, rn = (data.routines || []).filter(function (r) { return r.categoryId === id; }).length;
+    if ((n || rn) && !confirm('"' + c.name + '" 분야' + (n ? ', 기록 ' + n + '개' : '') + (rn ? ', 루틴 ' + rn + '개' : '') + '가 모두 삭제됩니다. 계속할까요?')) return;
+    data.routines = (data.routines || []).filter(function (r) { return r.categoryId !== id; });
     data.categories = data.categories.filter(function (x) { return x.id !== id; });
     data.entries = data.entries.filter(function (e) { return e.categoryId !== id; });
     save(); renderSettings(); renderHud(); toast('분야를 지웠어요');
@@ -2418,12 +2460,7 @@
   $('setSparkle').addEventListener('change', function () { data.settings.sparkle = this.checked; save(); renderSparkles(); });
 
   $('exportBtn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = '꿈속정원-백업-' + today() + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-    toast('✧ 백업 파일을 저장했어요');
+    saveFile('꿈속정원-백업-' + today() + '.json', JSON.stringify(data, null, 2), 'application/json', '✧ 백업 파일을 저장했어요');
   });
   $('importFile').addEventListener('change', function () {
     var f = this.files[0]; if (!f) return;
@@ -2441,9 +2478,120 @@
   });
 
   // ================= 렌더 =================
+  // ================= 출석 체크 · 루틴 완수 =================
+  function attended(d) { return !!(data.attendance && data.attendance[d]); }
+  function attStreak() { var n = 0, d = today(); if (!attended(d)) d = addDays(d, -1); while (attended(d)) { n++; d = addDays(d, -1); } return n; }
+  function routineDay(d) { // 그날 잡혀 있던 루틴과 완수한 수
+    var dow = parseYmd(d).getDay();
+    var list = (data.routines || []).filter(function (r) { return r.days.indexOf(dow) >= 0 && (!r.createdAt || ymd(new Date(r.createdAt)) <= d); });
+    return { total: list.length, done: list.filter(function (r) { return routineEntry(r, d); }).length };
+  }
+  function checkIn(ev) {
+    var t = today(); if (attended(t)) return;
+    data.attendance[t] = Date.now();
+    var st = attStreak(), bonus = st % 7 === 0 ? 30 : 0;
+    addXP(5 + bonus, ev); save(); sfx('save');
+    toast(bonus ? '✧ ' + st + '일 연속 출석! 보너스 +' + bonus + ' xp' : '✦ 출석 완료 · ' + st + '일 연속 · +5 xp');
+    if (bonus) confetti(50);
+    render();
+  }
+  function attCell(d, month) {
+    var rd = routineDay(d), a = attended(d), t = today(), fut = d > t, dt = parseYmd(d);
+    var cls = 'att-day' + (a ? ' on' : '') + (d === t ? ' today' : '') + (fut ? ' future' : '') + (rd.total && rd.done === rd.total && !fut ? ' allrt' : '') + (month ? ' m' : '');
+    var rt = rd.total && !fut ? '<span class="att-rt"><i style="width:' + (rd.done / rd.total * 100) + '%"></i></span><small>루틴 ' + rd.done + '/' + rd.total + '</small>' : '<small class="att-none">' + (fut ? '' : rd.total ? '' : '루틴 없음') + '</small>';
+    var title = prettyDate(d) + (a ? ' · 출석' : fut ? '' : ' · 미출석') + (rd.total ? ' · 루틴 ' + rd.done + '/' + rd.total : '');
+    return '<div class="' + cls + '" title="' + esc(title) + '">' + (month ? '<span class="att-num">' + dt.getDate() + '</span>' : '<span class="att-dow">' + DAYS[dt.getDay()] + '</span>') +
+      '<span class="att-stamp">' + (a ? ic('check') : month ? '' : dt.getDate()) + '</span>' + rt + '</div>';
+  }
+  function renderAttCard() {
+    var t = today(), mon = addDays(t, -((parseYmd(t).getDay() + 6) % 7)), days = [], i;
+    for (i = 0; i < 7; i++) days.push(addDays(mon, i));
+    var a = attended(t), st = attStreak(), rd = routineDay(t);
+    var monthN = Object.keys(data.attendance).filter(function (k) { return k.slice(0, 7) === t.slice(0, 7); }).length;
+    $('attCard').innerHTML = '<div class="card-h"><h2>' + ic('calendar') + '출석 체크</h2><span class="chip-sm">' + (st ? st + '일 연속' : '연속 0일') + ' · 이번 달 ' + monthN + '일</span></div>' +
+      '<div class="att-week">' + days.map(function (d) { return attCell(d); }).join('') + '</div>' +
+      '<div class="att-foot">' + (a ? '<span class="att-done">' + ic('check') + '오늘 출석 완료' + (rd.total ? ' · 루틴 ' + rd.done + '/' + rd.total + (rd.done === rd.total ? ' 모두 완수' : ' 진행 중') : '') + '</span>'
+        : '<button type="button" class="btn primary" data-att="in">' + ic('check') + '오늘 출석하기<small>+5 xp</small></button>') +
+      '<button type="button" class="btn small glass" data-att="month">이번 달 보기</button></div>';
+  }
+  var attMonth = null;
+  function renderAttMonth() {
+    var m = attMonth, first = parseYmd(m + '-01'), dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate(), t = today(), cells = '', i;
+    for (i = 0; i < first.getDay(); i++) cells += '<div class="att-day blank"></div>';
+    var att = 0, rtT = 0, rtD = 0, allDays = 0;
+    for (i = 1; i <= dim; i++) {
+      var d = m + '-' + pad(i); cells += attCell(d, true);
+      if (d > t) continue;
+      if (attended(d)) att++;
+      var rd = routineDay(d); rtT += rd.total; rtD += rd.done; if (rd.total && rd.done === rd.total) allDays++;
+    }
+    $('attBody').innerHTML = '<div class="att-mhead"><button type="button" class="btn tiny glass icon-only" data-att="prev" aria-label="이전 달">' + ic('left') + '</button><h2>' + first.getFullYear() + '년 ' + (first.getMonth() + 1) + '월 출석부</h2>' +
+      '<button type="button" class="btn tiny glass icon-only" data-att="next" aria-label="다음 달"' + (m >= t.slice(0, 7) ? ' disabled' : '') + '>' + ic('right') + '</button></div>' +
+      '<div class="att-sum"><div><small>출석</small><b>' + att + '일</b></div><div><small>루틴 완수율</small><b>' + (rtT ? Math.round(rtD / rtT * 100) + '%' : '—') + '</b></div><div><small>루틴 모두 완수</small><b>' + allDays + '일</b></div></div>' +
+      '<div class="att-grid">' + DAYS.map(function (x) { return '<div class="att-h">' + x + '</div>'; }).join('') + cells + '</div>' +
+      '<p class="muted small att-legend"><span class="lg on"></span>출석 <span class="lg all"></span>루틴 모두 완수 · 막대는 그날 루틴 완수 비율이에요</p>';
+  }
+  function openAttMonth() { attMonth = today().slice(0, 7); renderAttMonth(); if (!$('attDlg').open) $('attDlg').showModal(); }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-att]'); if (!b || b.disabled) return;
+    var a = b.dataset.att;
+    if (a === 'in') checkIn(ev);
+    else if (a === 'month') { sfx('pop'); openAttMonth(); }
+    else if (a === 'prev' || a === 'next') { var d = parseYmd(attMonth + '-01'); d.setMonth(d.getMonth() + (a === 'prev' ? -1 : 1)); attMonth = ymd(d).slice(0, 7); renderAttMonth(); }
+  });
+
+  // ================= 앱 설치 (다운로드) =================
+  var deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; renderInstall(); });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; toast('✧ 앱이 설치됐어요. 홈 화면 아이콘으로 열어 보세요'); renderInstall(); });
+  function isStandalone() { return !!((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true); }
+  function platform() { var u = navigator.userAgent; if (/iPhone|iPad|iPod/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1)) return 'ios'; if (/Android/.test(u)) return 'android'; return 'desktop'; }
+  function inAppBrowser() { return /KAKAOTALK|NAVER\(|Instagram|FBAN|FBAV|Line\/|DaumApps/i.test(navigator.userAgent); }
+  function installSteps() {
+    var p = platform();
+    if (inAppBrowser()) return ['지금은 카카오톡·인스타그램 같은 앱 안의 브라우저로 열려 있어서 설치가 안 돼요.', '오른쪽 위(또는 아래) 메뉴에서 "다른 브라우저로 열기"를 눌러 ' + (p === 'ios' ? 'Safari' : 'Chrome') + '로 열어 주세요.', '열린 화면에서 이 안내를 다시 따라 하면 돼요.'];
+    if (p === 'ios') return ['Safari로 이 페이지를 열어요.', '화면 아래(아이패드는 위) 공유 버튼, 네모에 위쪽 화살표 모양을 눌러요.', '목록을 내려 "홈 화면에 추가"를 누르고, 오른쪽 위 "추가"를 눌러요.', '홈 화면에 생긴 꿈속 정원 아이콘으로 열어요. 이렇게 열어야 알림을 켤 수 있어요 (iOS 16.4 이상).'];
+    if (p === 'android') return ['Chrome으로 이 페이지를 열어요.', '오른쪽 위 ⋮ 메뉴를 눌러요.', '"앱 설치" 또는 "홈 화면에 추가"를 누르고 "설치"를 눌러요.', '홈 화면에 생긴 꿈속 정원 아이콘으로 열어요.'];
+    return ['Chrome 또는 Edge로 이 페이지를 열어요.', '주소창 오른쪽 끝의 설치 아이콘(모니터에 아래 화살표)을 누르거나, 메뉴 → "앱 설치" 또는 "앱 → 이 사이트를 앱으로 설치"를 눌러요.', '설치하면 바탕화면과 시작 메뉴에서 바로 열 수 있어요.', '휴대폰에서도 쓰려면 아래 주소를 휴대폰 브라우저로 열어 같은 방법으로 설치해요. 기록은 기기마다 따로 저장되니 백업 파일로 옮겨요.'];
+  }
+  function installHTML(compact) {
+    if (isStandalone()) return '<p class="inst-ok">' + ic('check') + '앱으로 설치되어 실행 중이에요</p>';
+    if (location.protocol === 'file:') return '<p class="muted small">지금은 PC의 파일로 열려 있어요. 설치하려면 ' + esc(appUrl()) + ' 을 브라우저로 열어 주세요.</p>';
+    var btn = deferredInstall ? '<button type="button" class="btn primary" data-inst="prompt">' + ic('download') + '지금 설치하기</button>' : '<button type="button" class="btn primary" data-inst="guide">' + ic('download') + '설치 방법 보기</button>';
+    return (compact ? '' : '<p class="muted small">앱스토어에서 받는 앱이 아니에요. 이 웹 주소를 홈 화면에 추가하면 앱처럼 설치돼요. 무료이고 용량도 거의 차지하지 않아요.</p>') +
+      '<div class="row">' + btn + '<button type="button" class="btn glass" data-inst="copy">' + ic('cards') + '주소 복사</button></div>';
+  }
+  function renderInstall() {
+    if ($('installBody')) $('installBody').innerHTML = installHTML(false);
+    var b = $('installBanner'); if (!b) return;
+    var show = !isStandalone() && location.protocol !== 'file:' && data.settings.onboarded && !data.settings.installHidden;
+    b.innerHTML = show ? '<div class="card inst-banner"><div class="ib-t">' + ic('download') + '<div><b>앱으로 설치하기</b><small>홈 화면 아이콘으로 바로 열고, 알림도 받을 수 있어요</small></div><button type="button" class="btn tiny glass icon-only" data-inst="hide" aria-label="안내 닫기">' + ic('x') + '</button></div>' + installHTML(true) + '</div>' : '';
+  }
+  function openInstallGuide(why) {
+    var p = platform();
+    $('instBody').innerHTML = '<h2>' + ic('download') + '앱 설치 방법</h2>' + (why ? '<p class="inst-why">' + esc(why) + '</p>' : '') +
+      '<p class="muted small">' + (inAppBrowser() ? '앱 안 브라우저' : { ios: 'iPhone · iPad', android: 'Android 휴대폰', desktop: 'PC' }[p]) + ' 기준이에요</p>' +
+      '<ol class="inst-steps">' + installSteps().map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      '<p class="inst-url">' + esc(appUrl()) + '</p>';
+    if (!$('instDlg').open) $('instDlg').showModal();
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-inst]'); if (!b) return;
+    var a = b.dataset.inst;
+    if (a === 'prompt' && deferredInstall) {
+      deferredInstall.prompt();
+      deferredInstall.userChoice.then(function (c) { if (c.outcome === 'accepted') toast('✧ 설치를 시작했어요'); deferredInstall = null; renderInstall(); });
+    } else if (a === 'guide') openInstallGuide();
+    else if (a === 'copy') {
+      var u = appUrl();
+      (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(u) : Promise.reject()).then(function () { toast('주소를 복사했어요 · 휴대폰 브라우저에 붙여넣어 열어요'); }, function () { toast(u); });
+    } else if (a === 'hide') { data.settings.installHidden = true; save(); renderInstall(); toast('설정 → 앱 설치에서 언제든 다시 볼 수 있어요'); }
+  });
+
   // ================= 빠른 기록 시트 · 첫 실행 안내 =================
   function openAdd(catId) {
     if (catId) selCat = catId;
+    if (!$('addDlg').open) $('addDate').value = today();
     renderChips();
     var d = $('addDlg'); if (!d.open) d.showModal();
     setTimeout(function () { $('addMin').focus(); }, 60);
